@@ -1,0 +1,65 @@
+package org.example.weathercastbot.service;
+
+import org.example.weathercastbot.dto.EarthquakeDto;
+import org.example.weathercastbot.dto.TownshipForecastDto;
+import org.example.weathercastbot.dto.WeatherInfoDto;
+
+import java.util.Optional;
+
+public interface CWAService {
+
+    
+    /**
+     * Gets the daily 36-hour forecast for a specific location.
+     * @param locationName e.g., "臺北市"
+     * @return WeatherInfoDto if found.
+     */
+    Optional<WeatherInfoDto> getDailyForecast(String locationName);
+
+    /**
+     * Checks if it will rain in the short term (useful for the 30-min alert).
+     * @param locationName exact location name
+     * @return true if probability is high or radar shows rain.
+     */
+    boolean isGoingToRain(String locationName);
+
+    /**
+     * Gets the daily rain probability percentage (0-100).
+     * @param locationName e.g., "臺北市"
+     * @return The rain chance percentage, or 0 if unavailable.
+     */
+    int getDailyRainChance(String locationName);
+    /**
+     * Gets the real-time observation data (like temperature).
+     * @param locationName e.g., "臺北市"
+     */
+    Optional<String> getRealTimeObservation(String locationName);
+
+    /**
+     * Gets active thunderstorm alerts.
+     * @param locationName the location name to filter (e.g. 台北市)
+     * @return Optional containing the thunderstorm alert if present
+     */
+    Optional<String> getThunderstormAlerts(String locationName);
+
+    /**
+     * Retrieves the latest significant earthquake report (E-A0015-001).
+     * @return Optional containing the latest earthquake DTO.
+     */
+    Optional<EarthquakeDto> getLatestEarthquake();
+
+    /**
+     * Gets the 3-day 3-hour forecast for a specific township (F-D0047-089).
+     */
+    Optional<TownshipForecastDto> get3HourForecast(String county, String town);
+
+    /**
+     * Gets the 1-week forecast for a specific township (F-D0047-091).
+     */
+    Optional<String> getWeeklyForecast(String county, String town);
+
+    /**
+     * Gets a specific Township daily summary separating daytime and nighttime forecasts.
+     */
+    Optional<org.example.weathercastbot.dto.TownshipDailyForecastDto> getTownshipDailySummary(String county, String town);
+}

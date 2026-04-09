@@ -1,0 +1,49 @@
+server:
+  port: 8088
+
+spring:
+  application:
+    name: weather-cast-bot
+  task:
+    scheduling:
+      pool:
+        size: 5
+  
+  # H2 Database configuration
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  datasource:
+    url: jdbc:h2:file:./data/weather-bot;AUTO_SERVER=TRUE
+    driverClassName: org.h2.Driver
+    username: sa
+    password: 
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+# API Keys & Tokens
+api:
+  cwa:
+    key: ${CWA_API_KEY:YOUR_CWA_API_KEY}
+  gemini:
+    key: ${GEMINI_API_KEY:YOUR_GEMINI_API_KEY}
+
+# Discord Configuration
+discord:
+  bot:
+    token: ${DISCORD_BOT_TOKEN:YOUR_DISCORD_BOT_TOKEN}
+
+# LINE Configuration
+line:
+  bot:
+    channel-token: ${LINE_CHANNEL_TOKEN:YOUR_LINE_CHANNEL_TOKEN}
+    channel-secret: ${LINE_CHANNEL_SECRET:YOUR_LINE_CHANNEL_SECRET}
+    handler:
+      path: /callback
