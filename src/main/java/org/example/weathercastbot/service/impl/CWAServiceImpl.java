@@ -627,18 +627,22 @@ public class CWAServiceImpl implements CWAService {
 
         String endpointId = getEndpointId(county, true); // Use weekly endpoint to get 12-hour PoP
         String encodedTown = town != null ? java.net.URLEncoder.encode(town, java.nio.charset.StandardCharsets.UTF_8) : "";
-        String url = String.format("https://opendata.cwa.gov.tw/api/v1/rest/datastore/%s?Authorization=%s&elementName=Wx,MaxT,MinT,PoP12h&locationName=%s", endpointId, apiKey, encodedTown);
+        String url = String.format("https://opendata.cwa.gov.tw/api/v1/rest/datastore/%s?Authorization=%s&locationName=%s", endpointId, apiKey, encodedTown);
 
         try {
             HttpRequest request = HttpRequest.newBuilder().uri(java.net.URI.create(url)).GET().build();
             java.net.http.HttpResponse<String> response = fetchWithRetry(request);
             if (response.statusCode() == 200) {
                 org.json.JSONObject json = new org.json.JSONObject(response.body());
-                org.json.JSONArray locationArr = json.optJSONObject("records").optJSONArray("locations").getJSONObject(0).optJSONArray("location");
+                org.json.JSONObject records = json.optJSONObject("records");
+                if (records != null) {
+                    org.json.JSONArray locationsOuter = records.optJSONArray("locations");
+                    if (locationsOuter != null && !locationsOuter.isEmpty()) {
+                        org.json.JSONArray locationArr = locationsOuter.getJSONObject(0).optJSONArray("location");
 
-                if (locationArr != null && locationArr.length() > 0) {
-                    String targetName = (town != null && !town.isEmpty()) ? town : county;
-                    org.json.JSONObject targetLocation = locationArr.getJSONObject(0);
+                        if (locationArr != null && locationArr.length() > 0) {
+                            String targetName = (town != null && !town.isEmpty()) ? town : county;
+                            org.json.JSONObject targetLocation = locationArr.getJSONObject(0);
 
                     for (int i = 0; i < locationArr.length(); i++) {
                         if (targetName.equals(locationArr.getJSONObject(i).optString("LocationName", ""))) {
@@ -703,6 +707,8 @@ public class CWAServiceImpl implements CWAService {
                     if (dto.getNightPop() == null) dto.setNightPop("0");
                     
                     return Optional.of(dto);
+                }
+                    }
                 }
             }
         } catch (Exception e) {
