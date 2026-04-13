@@ -636,78 +636,85 @@ public class CWAServiceImpl implements CWAService {
                 org.json.JSONObject json = new org.json.JSONObject(response.body());
                 org.json.JSONObject records = json.optJSONObject("records");
                 if (records != null) {
-                    org.json.JSONArray locationsOuter = records.optJSONArray("locations");
+                    org.json.JSONArray locationsOuter = records.optJSONArray("Locations"); // Note: uppercase
                     if (locationsOuter != null && !locationsOuter.isEmpty()) {
-                        org.json.JSONArray locationArr = locationsOuter.getJSONObject(0).optJSONArray("location");
+                        org.json.JSONArray locationArr = locationsOuter.getJSONObject(0).optJSONArray("Location"); // Note: uppercase
 
                         if (locationArr != null && locationArr.length() > 0) {
                             String targetName = (town != null && !town.isEmpty()) ? town : county;
                             org.json.JSONObject targetLocation = locationArr.getJSONObject(0);
 
-                    for (int i = 0; i < locationArr.length(); i++) {
-                        if (targetName.equals(locationArr.getJSONObject(i).optString("LocationName", ""))) {
-                            targetLocation = locationArr.getJSONObject(i);
-                            break;
-                        }
-                    }
+                            for (int i = 0; i < locationArr.length(); i++) {
+                                if (targetName.equals(locationArr.getJSONObject(i).optString("LocationName", ""))) {
+                                    targetLocation = locationArr.getJSONObject(i);
+                                    break;
+                                }
+                            }
 
-                    org.example.weathercastbot.dto.TownshipDailyForecastDto.TownshipDailyForecastDtoBuilder dtoBuilder = 
-                        org.example.weathercastbot.dto.TownshipDailyForecastDto.builder()
-                            .county(county)
-                            .town(targetName);
+                            org.example.weathercastbot.dto.TownshipDailyForecastDto.TownshipDailyForecastDtoBuilder dtoBuilder = 
+                                org.example.weathercastbot.dto.TownshipDailyForecastDto.builder()
+                                    .county(county)
+                                    .town(targetName);
 
-                    org.json.JSONArray elements = targetLocation.optJSONArray("weatherElement");
-                    if (elements == null) return Optional.empty();
+                            org.json.JSONArray elements = targetLocation.optJSONArray("WeatherElement");
+                            if (elements == null) return Optional.empty();
 
-                    String todayDate = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Taipei")).toString();
-                    String dayStart = todayDate + " 06:00:00";
-                    String nightStart = todayDate + " 18:00:00";
+                            String todayDate = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Taipei")).toString();
+                            String dayStartMatchFmt1 = todayDate + "T06:00:00+08:00";
+                            String dayStartMatchFmt2 = todayDate + " 06:00:00";
+                            String nightStartMatchFmt1 = todayDate + "T18:00:00+08:00";
+                            String nightStartMatchFmt2 = todayDate + " 18:00:00";
 
-                    for (int i = 0; i < elements.length(); i++) {
-                        org.json.JSONObject el = elements.getJSONObject(i);
-                        String elName = el.optString("elementName", "");
-                        org.json.JSONArray times = el.optJSONArray("time");
-                        if (times == null) continue;
+                            for (int i = 0; i < elements.length(); i++) {
+                                org.json.JSONObject el = elements.getJSONObject(i);
+                                String elName = el.optString("ElementName", "");
+                                org.json.JSONArray times = el.optJSONArray("Time");
+                                if (times == null) continue;
 
-                        for (int j = 0; j < times.length(); j++) {
-                            org.json.JSONObject t = times.getJSONObject(j);
-                            String st = t.optString("startTime", "");
-                            
-                            org.json.JSONArray vals = t.optJSONArray("elementValue");
-                            String val = (vals != null && vals.length() > 0) ? vals.getJSONObject(0).optString("value", "") : "";
-                            if (val.isEmpty() && vals != null && vals.length() > 0) {
-                                // Fallback for 12小時降雨機率 which might use ProbabilityOfPrecipitation etc
-                                java.util.Iterator<String> keys = vals.getJSONObject(0).keys();
-                                while(keys.hasNext()) {
-                                    String k = keys.next();
-                                    if (!"measures".equals(k)) {
-                                        val = vals.getJSONObject(0).optString(k);
-                                        break;
+                                for (int j = 0; j < times.length(); j++) {
+                                    org.json.JSONObject t = times.getJSONObject(j);
+                                    String st = t.optString("StartTime", "");
+                                    
+                                    org.json.JSONArray vals = t.optJSONArray("ElementValue");
+                                    String val = "";
+                                    if (vals != null && vals.length() > 0) {
+                                        org.json.JSONObject valObj = vals.getJSONObject(0);
+                                        // Try to find the generic value key or any key that is not generic descriptions
+                                        if (valObj.has("value")) {
+                                            val = valObj.optString("value");
+                                        } else {
+                                            java.util.Iterator<String> keys = valObj.keys();
+                                            while(keys.hasNext()) {
+                                                String k = keys.next();
+                                                if (!"measures".equalsIgnoreCase(k) && !"Measure".equalsIgnoreCase(k)) {
+                                                    val = valObj.optString(k);
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if (st.equals(dayStartMatchFmt1) || st.equals(dayStartMatchFmt2)) {
+                                        if ("天氣現象".equals(elName) || "Wx".equals(elName)) dtoBuilder.dayDescription(val);
+                                        else if ("12小時降雨機率".equals(elName) || "PoP12h".equals(elName)) dtoBuilder.dayPop(val);
+                                        else if ("最高溫度".equals(elName) || "MaxT".equals(elName)) dtoBuilder.dayMaxTemp(val);
+                                        else if ("最低溫度".equals(elName) || "MinT".equals(elName)) dtoBuilder.dayMinTemp(val);
+                                    } else if (st.equals(nightStartMatchFmt1) || st.equals(nightStartMatchFmt2)) {
+                                        if ("天氣現象".equals(elName) || "Wx".equals(elName)) dtoBuilder.nightDescription(val);
+                                        else if ("12小時降雨機率".equals(elName) || "PoP12h".equals(elName)) dtoBuilder.nightPop(val);
+                                        else if ("最高溫度".equals(elName) || "MaxT".equals(elName)) dtoBuilder.nightMaxTemp(val);
+                                        else if ("最低溫度".equals(elName) || "MinT".equals(elName)) dtoBuilder.nightMinTemp(val);
                                     }
                                 }
                             }
 
-                            if (st.equals(dayStart)) {
-                                if ("天氣現象".equals(elName) || "Wx".equals(elName)) dtoBuilder.dayDescription(val);
-                                else if ("12小時降雨機率".equals(elName) || "PoP12h".equals(elName)) dtoBuilder.dayPop(val);
-                                else if ("最高溫度".equals(elName) || "MaxT".equals(elName)) dtoBuilder.dayMaxTemp(val);
-                                else if ("最低溫度".equals(elName) || "MinT".equals(elName)) dtoBuilder.dayMinTemp(val);
-                            } else if (st.equals(nightStart)) {
-                                if ("天氣現象".equals(elName) || "Wx".equals(elName)) dtoBuilder.nightDescription(val);
-                                else if ("12小時降雨機率".equals(elName) || "PoP12h".equals(elName)) dtoBuilder.nightPop(val);
-                                else if ("最高溫度".equals(elName) || "MaxT".equals(elName)) dtoBuilder.nightMaxTemp(val);
-                                else if ("最低溫度".equals(elName) || "MinT".equals(elName)) dtoBuilder.nightMinTemp(val);
-                            }
+                            // Fallback to empty if not found
+                            org.example.weathercastbot.dto.TownshipDailyForecastDto dto = dtoBuilder.build();
+                            if (dto.getDayPop() == null) dto.setDayPop("0");
+                            if (dto.getNightPop() == null) dto.setNightPop("0");
+                            
+                            return Optional.of(dto);
                         }
-                    }
-
-                    // Fallback to empty if not found
-                    org.example.weathercastbot.dto.TownshipDailyForecastDto dto = dtoBuilder.build();
-                    if (dto.getDayPop() == null) dto.setDayPop("0");
-                    if (dto.getNightPop() == null) dto.setNightPop("0");
-                    
-                    return Optional.of(dto);
-                }
                     }
                 }
             }
