@@ -149,42 +149,73 @@ public class WeatherScheduler {
                         .map(RainAlertBlock::getTimeBlock)
                         .collect(java.util.stream.Collectors.toSet());
                 
-                boolean isStormActive = notified.contains("ACTIVE_STORM");
+                boolean isHeavyStorm = notified.contains("HEAVY_STORM");
+                boolean isNormalStorm = notified.contains("NORMAL_STORM");
+                boolean isLegacyStorm = notified.contains("ACTIVE_STORM");
 
                 if (townOpt.isPresent()) {
                     int maxPop = townOpt.get().getUpcomingPop();
                     
-                    if (maxPop >= 50 && !isStormActive) {
+                    if (maxPop >= 70 && !isHeavyStorm) {
                         String startBlock = townOpt.get().getRainStartTimeBlock();
                         String startFmt = "";
                         if (startBlock != null) {
                             startFmt = org.example.weathercastbot.util.TimeFormatUtil.convertToRelativeDay(startBlock).split("~")[0] + " 以後";
                         }
                         
-                        String template = String.format("☔️ 精準降雨預警：【%%s】預計於 %s 降雨機率將逐漸攀升至 %d%%%%，出門記得攜帶雨具！", startFmt, maxPop);
+                        String template = String.format("🚨 大雨預警：【%%s】預計於 %s 降雨機率高達 %d%%%%！請留意較大雨勢！", startFmt, maxPop);
                         for (Subscriber sub : location.getSubscribers()) {
                             subscriberAlertMap.computeIfAbsent(sub, k -> new java.util.LinkedHashMap<>())
                                               .computeIfAbsent(template, k -> new java.util.ArrayList<>())
                                               .add(location.getName());
                         }
-                        rainAlertBlockRepository.save(new RainAlertBlock(null, location.getId(), "ACTIVE_STORM"));
-                        notified.add("ACTIVE_STORM");
                         
-                        // Suppress the weak DAILY alert for the rest of the day since we've already issued a strong storm warning
+                        rainAlertBlockRepository.save(new RainAlertBlock(null, location.getId(), "HEAVY_STORM"));
+                        notified.add("HEAVY_STORM");
+                        
+                        for (RainAlertBlock alertBlock : notifiedBlocks) {
+                            if ("NORMAL_STORM".equals(alertBlock.getTimeBlock()) || "ACTIVE_STORM".equals(alertBlock.getTimeBlock())) {
+                                rainAlertBlockRepository.delete(alertBlock);
+                                notified.remove(alertBlock.getTimeBlock());
+                            }
+                        }
+                        
                         if (!notified.contains("DAILY")) {
                              rainAlertBlockRepository.save(new RainAlertBlock(null, location.getId(), "DAILY"));
                              notified.add("DAILY");
                         }
                         
-                        // Clear out old legacy time-block alerts
+                    } else if (maxPop >= 40 && maxPop < 70 && !isNormalStorm && !isHeavyStorm) {
+                        String startBlock = townOpt.get().getRainStartTimeBlock();
+                        String startFmt = "";
+                        if (startBlock != null) {
+                            startFmt = org.example.weathercastbot.util.TimeFormatUtil.convertToRelativeDay(startBlock).split("~")[0] + " 以後";
+                        }
+                        
+                        String template = String.format("☔️ 降雨預警：【%%s】預計於 %s 降雨機率將來到 %d%%%%，出門建議攜帶雨具。", startFmt, maxPop);
+                        for (Subscriber sub : location.getSubscribers()) {
+                            subscriberAlertMap.computeIfAbsent(sub, k -> new java.util.LinkedHashMap<>())
+                                              .computeIfAbsent(template, k -> new java.util.ArrayList<>())
+                                              .add(location.getName());
+                        }
+                        
+                        rainAlertBlockRepository.save(new RainAlertBlock(null, location.getId(), "NORMAL_STORM"));
+                        notified.add("NORMAL_STORM");
+                        
                         for (RainAlertBlock alertBlock : notifiedBlocks) {
-                            String block = alertBlock.getTimeBlock();
-                            if (!"DAILY".equals(block) && !"ACTIVE_STORM".equals(block)) {
+                            if ("ACTIVE_STORM".equals(alertBlock.getTimeBlock())) {
                                 rainAlertBlockRepository.delete(alertBlock);
+                                notified.remove("ACTIVE_STORM");
                             }
                         }
-                    } else if (maxPop <= 30 && isStormActive) {
-                        String template = String.format("🔄 天氣更新：【%%s】未來降雨機率已全面下修至 %d%%%%，警報解除！", maxPop);
+                        
+                        if (!notified.contains("DAILY")) {
+                             rainAlertBlockRepository.save(new RainAlertBlock(null, location.getId(), "DAILY"));
+                             notified.add("DAILY");
+                        }
+                        
+                    } else if (maxPop <= 20 && (isNormalStorm || isHeavyStorm || isLegacyStorm)) {
+                        String template = String.format("🔄 天氣更新：【%%s】未來降雨機率已全面下修至 %d%%%%，警報解除！但仍須注意地面積水或偶發毛毛雨。", maxPop);
                         for (Subscriber sub : location.getSubscribers()) {
                             subscriberAlertMap.computeIfAbsent(sub, k -> new java.util.LinkedHashMap<>())
                                               .computeIfAbsent(template, k -> new java.util.ArrayList<>())
@@ -192,13 +223,16 @@ public class WeatherScheduler {
                         }
                         
                         for (RainAlertBlock alertBlock : notifiedBlocks) {
-                            if ("ACTIVE_STORM".equals(alertBlock.getTimeBlock())) {
+                            if ("HEAVY_STORM".equals(alertBlock.getTimeBlock()) || 
+                                "NORMAL_STORM".equals(alertBlock.getTimeBlock()) || 
+                                "ACTIVE_STORM".equals(alertBlock.getTimeBlock())) {
                                 rainAlertBlockRepository.delete(alertBlock);
                             }
                         }
+                        notified.remove("HEAVY_STORM");
+                        notified.remove("NORMAL_STORM");
                         notified.remove("ACTIVE_STORM");
                         
-                        // Ensure we don't immediately trigger a DAILY alert in the same tick if it wasn't already suppressed
                         if (!notified.contains("DAILY")) {
                              rainAlertBlockRepository.save(new RainAlertBlock(null, location.getId(), "DAILY"));
                              notified.add("DAILY");
@@ -206,7 +240,7 @@ public class WeatherScheduler {
                     }
                 }
 
-                if (!notified.contains("ACTIVE_STORM") && cwaService.isGoingToRain(county)) {
+                if (!notified.contains("HEAVY_STORM") && !notified.contains("NORMAL_STORM") && !notified.contains("ACTIVE_STORM") && cwaService.isGoingToRain(county)) {
                     int chance = cwaService.getDailyRainChance(county);
                     if (!notified.contains("DAILY")) {
                         String template = String.format("⚠️ 降雨警報：【%%s】本日整體降雨機率達 %d%%%%，出門記得準備雨具！", chance);
