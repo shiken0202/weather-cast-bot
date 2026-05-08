@@ -76,7 +76,7 @@ public class GeminiServiceImpl implements GeminiService {
     private String executeGeminiCall(GeminiRequestDto requestDto) {
         try {
             String requestBody = objectMapper.writeValueAsString(requestDto);
-            String url = String.format("https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key=%s", apiKey);
+            String url = String.format("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=%s", apiKey);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
