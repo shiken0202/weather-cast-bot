@@ -82,7 +82,7 @@ public class GeminiServiceImpl implements GeminiService {
         try {
             String requestBody = objectMapper.writeValueAsString(requestDto);
             String url = String.format(
-                    "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-26b-a4b-it:generateContent?key=%s",
+                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=%s",
                     apiKey);
 
             HttpRequest request = HttpRequest.newBuilder()
@@ -99,7 +99,12 @@ public class GeminiServiceImpl implements GeminiService {
             }
 
             GeminiResponseDto responseDto = objectMapper.readValue(response.body(), GeminiResponseDto.class);
-            return sanitizeResponse(responseDto.getText());
+            String result = sanitizeResponse(responseDto.getText());
+            if (result.isEmpty()) {
+                log.error("Gemini returned an empty or completely hallucinated response.");
+                return "抱歉，目前 AI 產生了異常的內容，無法為您解析天氣，請稍後再試！";
+            }
+            return result;
 
         } catch (Exception e) {
             log.error("Error calling Gemini API: ", e);

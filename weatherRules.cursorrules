@@ -1,0 +1,9 @@
+1. 語言設定：
+   - 永遠使用繁體中文 (Traditional Chinese) 回覆。
+   - 程式碼中的註解請使用繁體中文。
+2. 專案背景：
+   - 這是一個 Java Spring Boot 專案，名為 weather-cast-bot。
+   - 負責串接天氣與地震 API，並推播給使用者。
+3. 開發風格：
+   - 請提供簡潔、高可讀性、具備完善 Try-Catch 的防呆程式碼。
+   - 盡量使用 Lombok (@Data, @Slf4j 等) 減少樣板代碼。

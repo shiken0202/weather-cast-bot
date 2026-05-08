@@ -210,11 +210,15 @@ public class LineBotHandler {
     }
 
     private void replyMessage(String replyToken, String text) {
+        final String finalText = (text == null || text.trim().isEmpty()) 
+                ? "抱歉，大腦網路暫時無法產生有效的天氣預報內容，請稍後再試！" 
+                : text;
+                
         lineMessagingClient.ifPresent(client -> {
             try {
                 ReplyMessageRequest request = new ReplyMessageRequest(
                         replyToken, 
-                        List.of(new TextMessage(text)),
+                        List.of(new TextMessage(finalText)),
                         false
                 );
                 client.replyMessage(request).get();
