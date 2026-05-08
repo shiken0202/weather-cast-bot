@@ -82,7 +82,7 @@ public class GeminiServiceImpl implements GeminiService {
         try {
             String requestBody = objectMapper.writeValueAsString(requestDto);
             String url = String.format(
-                    "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key=%s",
+                    "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-26b-a4b-it:generateContent?key=%s",
                     apiKey);
 
             HttpRequest request = HttpRequest.newBuilder()

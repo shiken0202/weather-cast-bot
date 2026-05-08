@@ -25,7 +25,7 @@ import org.example.weathercastbot.model.RainAlertBlock;
 @Component
 public class WeatherScheduler {
 
-    private String lastEarthquakeNo = "";
+    private final java.util.Set<String> processedEarthquakes = new java.util.concurrent.ConcurrentSkipListSet<>();
     
     private final SubscriptionService subscriptionService;
     private final CWAService cwaService;
@@ -312,48 +312,79 @@ public class WeatherScheduler {
     @Scheduled(fixedRate = 60000)
     @Transactional
     public void checkEarthquakeAlerts() {
-        Optional<EarthquakeDto> eqOpt = cwaService.getLatestEarthquake();
-        if (eqOpt.isPresent()) {
-            EarthquakeDto eq = eqOpt.get();
-            if (!eq.getEarthquakeNo().equals(lastEarthquakeNo)) {
-                String message = String.format("🚨 【地震速報】\n%s\n發生時間：%s\n芮氏規模：%s\n地震深度：%s km\n震央位置：%s",
-                        eq.getReportContent(), eq.getTime(), eq.getMagnitude(), eq.getDepth(), eq.getLocation());
+        List<EarthquakeDto> eqs = cwaService.getLatestEarthquakes();
+        if (eqs == null || eqs.isEmpty()) return;
+
+        for (EarthquakeDto eq : eqs) {
+            if (eq == null || eq.getEarthquakeNo() == null || eq.getEarthquakeNo().isEmpty()) continue;
+            
+            if (!processedEarthquakes.contains(eq.getEarthquakeNo())) {
+                boolean isStartup = processedEarthquakes.isEmpty();
+                processedEarthquakes.add(eq.getEarthquakeNo());
                 
-                // Fetch all unique subscribers mapped to their affected local intensity
-                List<Location> locations = subscriptionService.getAllTrackedLocations();
-                java.util.Map<Subscriber, java.util.List<String>> subscriberIntensities = new java.util.HashMap<>();
-                
-                for (Location loc : locations) {
-                    org.example.weathercastbot.util.LocationResolverUtil.LocationRef ref = org.example.weathercastbot.util.LocationResolverUtil.resolve(loc.getName());
-                    String county = ref.getCounty();
+                // Keep set small to prevent memory leaks over time
+                if (processedEarthquakes.size() > 50) {
+                    java.util.List<String> list = new java.util.ArrayList<>(processedEarthquakes);
+                    processedEarthquakes.clear();
+                    processedEarthquakes.addAll(list.subList(list.size() - 20, list.size()));
+                }
+
+                boolean shouldBroadcast = true;
+                if (isStartup) {
+                    // Check if earthquake is recent (< 10 minutes ago)
+                    try {
+                        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                        java.time.LocalDateTime eqTime = java.time.LocalDateTime.parse(eq.getTime(), formatter);
+                        java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Taipei"));
+                        long minutesAgo = java.time.Duration.between(eqTime, now).toMinutes();
+                        
+                        if (minutesAgo > 10) {
+                            shouldBroadcast = false;
+                            log.info("Skipping old earthquake {} on startup ({} mins ago)", eq.getEarthquakeNo(), minutesAgo);
+                        }
+                    } catch (Exception e) {
+                        log.error("Failed to parse earthquake time: {}", eq.getTime(), e);
+                        shouldBroadcast = false; // Safe fallback
+                    }
+                }
+
+                if (shouldBroadcast) {
+                    String message = String.format("🚨 【地震速報】\n%s\n發生時間：%s\n芮氏規模：%s\n地震深度：%s km\n震央位置：%s",
+                            eq.getReportContent(), eq.getTime(), eq.getMagnitude(), eq.getDepth(), eq.getLocation());
                     
-                    if (eq.getAffectedAreas() != null && eq.getAffectedAreas().containsKey(county)) {
-                        String localIntensity = eq.getAffectedAreas().get(county);
-                        String info = county + localIntensity;
+                    // Fetch all unique subscribers mapped to their affected local intensity
+                    List<Location> locations = subscriptionService.getAllTrackedLocations();
+                    java.util.Map<Subscriber, java.util.List<String>> subscriberIntensities = new java.util.HashMap<>();
+                    
+                    for (Location loc : locations) {
+                        org.example.weathercastbot.util.LocationResolverUtil.LocationRef ref = org.example.weathercastbot.util.LocationResolverUtil.resolve(loc.getName());
+                        String county = ref.getCounty();
                         
-                        for (Subscriber sub : loc.getSubscribers()) {
-                            subscriberIntensities.computeIfAbsent(sub, k -> new java.util.ArrayList<>()).add(info);
+                        if (eq.getAffectedAreas() != null && eq.getAffectedAreas().containsKey(county)) {
+                            String localIntensity = eq.getAffectedAreas().get(county);
+                            String info = county + localIntensity;
+                            
+                            for (Subscriber sub : loc.getSubscribers()) {
+                                subscriberIntensities.computeIfAbsent(sub, k -> new java.util.ArrayList<>()).add(info);
+                            }
+                        }
+                    }
+                    
+                    // Broadcast localized messages only to affected subscribers
+                    if (!subscriberIntensities.isEmpty()) {
+                        for (java.util.Map.Entry<Subscriber, java.util.List<String>> entry : subscriberIntensities.entrySet()) {
+                            Subscriber sub = entry.getKey();
+                            java.util.List<String> distinctList = entry.getValue().stream().distinct().collect(java.util.stream.Collectors.toList());
+                            String localMessage = message + "\n\n📍 本地最大震度：" + String.join("、", distinctList);
+                            
+                            if (sub.getPlatform() == Platform.DISCORD) {
+                                discordBotService.pushMessage(sub.getPlatformId(), localMessage);
+                            } else if (sub.getPlatform() == Platform.LINE) {
+                                lineBotHandler.pushMessage(sub.getPlatformId(), localMessage);
+                            }
                         }
                     }
                 }
-                
-                // Broadcast localized messages only to affected subscribers
-                if (!lastEarthquakeNo.isEmpty() && !subscriberIntensities.isEmpty()) {
-                    for (java.util.Map.Entry<Subscriber, java.util.List<String>> entry : subscriberIntensities.entrySet()) {
-                        Subscriber sub = entry.getKey();
-                        java.util.List<String> distinctList = entry.getValue().stream().distinct().collect(java.util.stream.Collectors.toList());
-                        String localMessage = message + "\n\n📍 本地最大震度：" + String.join("、", distinctList);
-                        
-                        if (sub.getPlatform() == Platform.DISCORD) {
-                            discordBotService.pushMessage(sub.getPlatformId(), localMessage);
-                        } else if (sub.getPlatform() == Platform.LINE) {
-                            lineBotHandler.pushMessage(sub.getPlatformId(), localMessage);
-                        }
-                    }
-                }
-                
-                // Update tracker
-                lastEarthquakeNo = eq.getEarthquakeNo();
             }
         }
     }

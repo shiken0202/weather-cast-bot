@@ -263,26 +263,43 @@ public class CWAServiceImpl implements CWAService {
     }
 
     @Override
-    public Optional<EarthquakeDto> getLatestEarthquake() {
-        String url = String.format("https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0015-001?Authorization=%s", apiKey);
+    public java.util.List<EarthquakeDto> getLatestEarthquakes() {
+        java.util.List<EarthquakeDto> results = new java.util.ArrayList<>();
+        
+        EarthquakeDto significant = fetchEarthquakeFromApi("E-A0015-001");
+        if (significant != null) results.add(significant);
+        
+        EarthquakeDto local = fetchEarthquakeFromApi("E-A0016-001");
+        if (local != null) results.add(local);
+        
+        return results;
+    }
+
+    private EarthquakeDto fetchEarthquakeFromApi(String endpoint) {
+        String url = String.format("https://opendata.cwa.gov.tw/api/v1/rest/datastore/%s?Authorization=%s", endpoint, apiKey);
         try {
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
             HttpResponse<String> response = fetchWithRetry(request);
-            if (response.statusCode() != 200) return Optional.empty();
+            if (response.statusCode() != 200) return null;
 
             JSONObject json = new JSONObject(response.body());
             JSONObject records = json.optJSONObject("records");
-            if (records == null) return Optional.empty();
+            if (records == null) return null;
 
             JSONArray earthquakes = records.optJSONArray("Earthquake");
-            if (earthquakes == null || earthquakes.length() == 0) return Optional.empty();
+            if (earthquakes == null || earthquakes.length() == 0) return null;
 
             JSONObject latestEq = earthquakes.getJSONObject(0);
             String earthquakeNo = latestEq.optString("EarthquakeNo", "");
+            // E-A0016-001 might not have a clean EarthquakeNo, fallback to time if empty
             String reportContent = latestEq.optString("ReportContent", "");
 
             JSONObject eqInfo = latestEq.optJSONObject("EarthquakeInfo");
             String time = eqInfo != null ? eqInfo.optString("OriginTime", "") : "";
+            if (earthquakeNo.isEmpty() && !time.isEmpty()) {
+                earthquakeNo = "LOCAL_" + time.replaceAll("[^0-9]", "");
+            }
+
             double depth = eqInfo != null ? eqInfo.optDouble("FocalDepth", 0.0) : 0.0;
             
             String magnitude = "";
@@ -302,16 +319,23 @@ public class CWAServiceImpl implements CWAService {
                 if (shakingAreas != null) {
                     for (int i = 0; i < shakingAreas.length(); i++) {
                         JSONObject area = shakingAreas.getJSONObject(i);
-                        String countyName = area.optString("CountyName", "");
+                        String countyNamesCombined = area.optString("CountyName", "");
                         String areaIntensity = area.optString("AreaIntensity", "");
-                        if (!countyName.isEmpty() && !areaIntensity.isEmpty()) {
-                            affectedAreas.put(countyName, areaIntensity);
+                        if (!countyNamesCombined.isEmpty() && !areaIntensity.isEmpty()) {
+                            // CWA might group counties e.g. "臺中市、臺東縣"
+                            String[] counties = countyNamesCombined.split("、");
+                            for (String c : counties) {
+                                String cleanC = c.trim();
+                                if (!affectedAreas.containsKey(cleanC)) {
+                                    affectedAreas.put(cleanC, areaIntensity);
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            return Optional.of(EarthquakeDto.builder()
+            return EarthquakeDto.builder()
                     .earthquakeNo(earthquakeNo)
                     .reportContent(reportContent)
                     .time(time)
@@ -319,11 +343,11 @@ public class CWAServiceImpl implements CWAService {
                     .magnitude(magnitude)
                     .location(location)
                     .affectedAreas(affectedAreas)
-                    .build());
+                    .build();
         } catch (Exception e) {
-            log.error("Error fetching earthquake data: ", e);
+            log.error("Error fetching earthquake data from {}: ", endpoint, e);
         }
-        return Optional.empty();
+        return null;
     }
 
     @Override

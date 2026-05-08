@@ -43,10 +43,10 @@ public interface CWAService {
     Optional<String> getThunderstormAlerts(String locationName);
 
     /**
-     * Retrieves the latest significant earthquake report (E-A0015-001).
-     * @return Optional containing the latest earthquake DTO.
+     * Retrieves the latest earthquake reports (significant and local).
+     * @return List containing the latest earthquake DTOs.
      */
-    Optional<EarthquakeDto> getLatestEarthquake();
+    java.util.List<EarthquakeDto> getLatestEarthquakes();
 
     /**
      * Gets the 3-day 3-hour forecast for a specific township (F-D0047-089).

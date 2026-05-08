@@ -124,23 +124,29 @@ public class WeatherSchedulerTest {
 
         when(subscriptionService.getAllTrackedLocations()).thenReturn(List.of(loc));
 
-        EarthquakeDto eq1 = EarthquakeDto.builder().earthquakeNo("001").build();
-        when(cwaService.getLatestEarthquake()).thenReturn(Optional.of(eq1));
+        java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Taipei"));
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        
+        EarthquakeDto eq1 = EarthquakeDto.builder()
+                .earthquakeNo("001")
+                .time(now.minusMinutes(15).format(formatter)) // older than 10 mins
+                .build();
+        when(cwaService.getLatestEarthquakes()).thenReturn(List.of(eq1));
 
-        // Initial run (skips push)
+        // Initial run (skips push due to being startup and eq is old)
         weatherScheduler.checkEarthquakeAlerts();
         verify(lineBotHandler, never()).pushMessage(anyString(), anyString(), anyBoolean());
 
         EarthquakeDto eq2 = EarthquakeDto.builder()
                 .earthquakeNo("002")
                 .reportContent("某地震")
-                .time("2024-02-14 12:00:00")
+                .time(now.minusMinutes(2).format(formatter)) // recent
                 .magnitude("5.2")
                 .depth("15.5")
                 .location("花蓮縣")
                 .affectedAreas(java.util.Map.of("臺北市", "2級"))
                 .build();
-        when(cwaService.getLatestEarthquake()).thenReturn(Optional.of(eq2));
+        when(cwaService.getLatestEarthquakes()).thenReturn(List.of(eq2));
 
         // Second run with new ID (pushes)
         weatherScheduler.checkEarthquakeAlerts();

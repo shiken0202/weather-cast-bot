@@ -117,14 +117,15 @@ public class CWAServiceImplTest {
         when(mockResponse.body()).thenReturn(mockJsonResponse);
         when(mockHttpClient.send(any(HttpRequest.class), Mockito.<HttpResponse.BodyHandler<String>>any())).thenReturn(mockResponse);
 
-        Optional<EarthquakeDto> result = cwaService.getLatestEarthquake();
+        java.util.List<EarthquakeDto> result = cwaService.getLatestEarthquakes();
 
-        assertTrue(result.isPresent());
-        assertEquals("112003", result.get().getEarthquakeNo());
-        assertEquals("發生規模5.2有感地震", result.get().getReportContent());
-        assertEquals("5.2", result.get().getMagnitude());
-        assertEquals("15.5", result.get().getDepth());
-        assertEquals("花蓮縣", result.get().getLocation());
-        assertEquals("2024-02-14 12:00:00", result.get().getTime());
+        assertFalse(result.isEmpty());
+        EarthquakeDto eq = result.get(0);
+        assertEquals("112003", eq.getEarthquakeNo());
+        assertEquals("發生規模5.2有感地震", eq.getReportContent());
+        assertEquals("5.2", eq.getMagnitude());
+        assertEquals("15.5", eq.getDepth());
+        assertEquals("花蓮縣", eq.getLocation());
+        assertEquals("2024-02-14 12:00:00", eq.getTime());
     }
 }
