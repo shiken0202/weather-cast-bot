@@ -50,6 +50,12 @@ public interface CWAService {
     Optional<String> getThunderstormAlerts(String locationName);
 
     /**
+     * Gets a summary of all active weather warnings across Taiwan.
+     * @return A formatted string summarizing all active warnings.
+     */
+    String getAllActiveWarningsSummary();
+
+    /**
      * Retrieves the latest earthquake reports (significant and local).
      * @return List containing the latest earthquake DTOs.
      */

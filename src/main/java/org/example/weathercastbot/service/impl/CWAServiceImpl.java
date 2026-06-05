@@ -317,6 +317,90 @@ public class CWAServiceImpl implements CWAService {
     }
 
     @Override
+    public String getAllActiveWarningsSummary() {
+        java.util.Map<String, java.util.Set<String>> allWarnings = new java.util.HashMap<>();
+        try {
+            // W-C0033-002
+            String url2 = String.format("https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0033-002?Authorization=%s", apiKey);
+            java.net.http.HttpRequest req2 = java.net.http.HttpRequest.newBuilder().uri(java.net.URI.create(url2)).GET().build();
+            java.net.http.HttpResponse<String> res2 = fetchWithRetry(req2);
+            if (res2.statusCode() == 200) {
+                org.json.JSONObject json = new org.json.JSONObject(res2.body());
+                org.json.JSONObject records = json.optJSONObject("records");
+                if (records != null) {
+                    org.json.JSONArray recordArr = records.optJSONArray("record");
+                    if (recordArr != null) {
+                        for (int i = 0; i < recordArr.length(); i++) {
+                            org.json.JSONObject record = recordArr.getJSONObject(i);
+                            org.json.JSONObject hazardConditions = record.optJSONObject("hazardConditions");
+                            if (hazardConditions == null) continue;
+                            org.json.JSONObject hazardsObj = hazardConditions.optJSONObject("hazards");
+                            if (hazardsObj == null) continue;
+                            org.json.JSONArray hazards = hazardsObj.optJSONArray("hazard");
+                            if (hazards == null) continue;
+                            for (int j = 0; j < hazards.length(); j++) {
+                                org.json.JSONObject info = hazards.getJSONObject(j).optJSONObject("info");
+                                if (info == null || !"zh-TW".equals(info.optString("language", ""))) continue;
+                                org.json.JSONObject affectedAreas = info.optJSONObject("affectedAreas");
+                                if (affectedAreas != null) {
+                                    org.json.JSONArray locations = affectedAreas.optJSONArray("location");
+                                    if (locations != null) {
+                                        String alertName = info.optString("phenomena", "") + info.optString("significance", "");
+                                        for (int k = 0; k < locations.length(); k++) {
+                                            String locName = locations.getJSONObject(k).optString("locationName", "");
+                                            if (!locName.isEmpty()) {
+                                                allWarnings.computeIfAbsent(locName, x -> new java.util.HashSet<>()).add(alertName);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // W-C0033-003
+            String url3 = String.format("https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0033-003?Authorization=%s", apiKey);
+            java.net.http.HttpRequest req3 = java.net.http.HttpRequest.newBuilder().uri(java.net.URI.create(url3)).GET().build();
+            java.net.http.HttpResponse<String> res3 = fetchWithRetry(req3);
+            if (res3.statusCode() == 200) {
+                org.json.JSONObject json = new org.json.JSONObject(res3.body());
+                org.json.JSONObject records = json.optJSONObject("records");
+                if (records != null) {
+                    org.json.JSONArray infoArr = records.optJSONArray("info");
+                    if (infoArr != null) {
+                        for (int i = 0; i < infoArr.length(); i++) {
+                            org.json.JSONObject info = infoArr.getJSONObject(i);
+                            if (!"zh-TW".equals(info.optString("language", ""))) continue;
+                            org.json.JSONArray areas = info.optJSONArray("area");
+                            if (areas != null) {
+                                String headline = info.optString("headline", "大雷雨");
+                                if (headline.contains("大雷雨") || headline.contains("雷雨")) {
+                                    for (int k = 0; k < areas.length(); k++) {
+                                        String areaDesc = areas.getJSONObject(k).optString("areaDesc", "");
+                                        if (!areaDesc.isEmpty()) {
+                                            allWarnings.computeIfAbsent(areaDesc.substring(0, Math.min(3, areaDesc.length())), x -> new java.util.HashSet<>()).add("大雷雨特報");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error fetching all warnings summary: ", e);
+        }
+
+        if (allWarnings.isEmpty()) return "全台目前無特別警報。";
+
+        return allWarnings.entrySet().stream()
+                .map(e -> e.getKey() + "(" + String.join(", ", e.getValue()) + ")")
+                .collect(java.util.stream.Collectors.joining("；"));
+    }
+
+    @Override
     public java.util.List<EarthquakeDto> getLatestEarthquakes() {
         java.util.List<EarthquakeDto> results = new java.util.ArrayList<>();
         

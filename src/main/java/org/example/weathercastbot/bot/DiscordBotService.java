@@ -189,10 +189,18 @@ public class DiscordBotService extends ListenerAdapter {
                 java.util.Optional<String> thunderstorm = thunderstormFut.join();
                 java.util.List<String> warnings = warningsFut.join();
 
+                String globalWarnings = null;
+                if (messageText.contains("全台") || messageText.contains("台灣") || messageText.contains("哪個地區") || messageText.contains("哪裡") || messageText.contains("哪縣市")) {
+                    globalWarnings = cwaService.getAllActiveWarningsSummary();
+                }
+
                 StringBuilder sb = new StringBuilder();
                 sb.append("---【").append(locationAlias).append("】---\n");
                 if (thunderstorm.isPresent()) sb.append("大雷雨特報: ").append(thunderstorm.get()).append("\n");
                 if (!warnings.isEmpty()) sb.append("天氣警特報: ").append(String.join(", ", warnings)).append("\n");
+                if (globalWarnings != null) {
+                    sb.append("全台警報摘要 (若使用者詢問全台狀況請參考此列表): ").append(globalWarnings).append("\n");
+                }
                 if (daily != null) {
                     sb.append("今日預報: ").append(daily.getDescription())
                       .append(", 降雨機率=").append(daily.getRainProbability())
