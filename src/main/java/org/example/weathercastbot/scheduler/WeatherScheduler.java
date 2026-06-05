@@ -134,20 +134,34 @@ public class WeatherScheduler {
             String county = locRef.getCounty();
             String town = locRef.hasTown() ? locRef.getTown() : "";
 
+            List<RainAlertBlock> notifiedBlocks = rainAlertBlockRepository.findByLocationId(location.getId());
+            java.util.Set<String> notified = notifiedBlocks.stream()
+                    .map(RainAlertBlock::getTimeBlock)
+                    .collect(java.util.stream.Collectors.toSet());
+
             Optional<String> thunderAlert = cwaService.getThunderstormAlerts(location.getName());
             if (thunderAlert.isPresent()) {
-                String template = String.format("🚨 極端天氣警報：【%%s】%s", thunderAlert.get());
-                for (Subscriber sub : location.getSubscribers()) {
-                    subscriberAlertMap.computeIfAbsent(sub, k -> new java.util.LinkedHashMap<>())
-                                      .computeIfAbsent(template, k -> new java.util.ArrayList<>())
-                                      .add(location.getName());
+                if (!notified.contains("THUNDERSTORM")) {
+                    String template = String.format("🚨 極端天氣警報：【%%s】%s", thunderAlert.get());
+                    for (Subscriber sub : location.getSubscribers()) {
+                        subscriberAlertMap.computeIfAbsent(sub, k -> new java.util.LinkedHashMap<>())
+                                          .computeIfAbsent(template, k -> new java.util.ArrayList<>())
+                                          .add(location.getName());
+                    }
+                    rainAlertBlockRepository.save(new RainAlertBlock(null, location.getId(), "THUNDERSTORM"));
+                    notified.add("THUNDERSTORM");
                 }
             } else {
+                if (notified.contains("THUNDERSTORM")) {
+                    for (RainAlertBlock alertBlock : notifiedBlocks) {
+                        if ("THUNDERSTORM".equals(alertBlock.getTimeBlock())) {
+                            rainAlertBlockRepository.delete(alertBlock);
+                        }
+                    }
+                    notified.remove("THUNDERSTORM");
+                }
+
                 Optional<org.example.weathercastbot.dto.TownshipForecastDto> townOpt = cwaService.get3HourForecast(county, town);
-                List<RainAlertBlock> notifiedBlocks = rainAlertBlockRepository.findByLocationId(location.getId());
-                java.util.Set<String> notified = notifiedBlocks.stream()
-                        .map(RainAlertBlock::getTimeBlock)
-                        .collect(java.util.stream.Collectors.toSet());
                 
                 boolean isHeavyStorm = notified.contains("HEAVY_STORM");
                 boolean isNormalStorm = notified.contains("NORMAL_STORM");

@@ -212,7 +212,7 @@ public class CWAServiceImpl implements CWAService {
     @Override
     public Optional<String> getThunderstormAlerts(String locationName) {
         String normalizedLocation = normalizeLocationName(locationName);
-        String url = String.format("https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0033-001?Authorization=%s", apiKey);
+        String url = String.format("https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0033-003?Authorization=%s", apiKey);
         if (normalizedLocation == null) return Optional.empty();
 
         try {
@@ -433,6 +433,12 @@ public class CWAServiceImpl implements CWAService {
                                         } catch (java.time.format.DateTimeParseException ex) {
                                             startTime = java.time.LocalDateTime.parse(stFull, formatter);
                                         }
+                                        java.time.LocalDateTime endTime;
+                                        try {
+                                            endTime = java.time.OffsetDateTime.parse(etFull).toLocalDateTime();
+                                        } catch (java.time.format.DateTimeParseException ex) {
+                                            endTime = java.time.LocalDateTime.parse(etFull, formatter);
+                                        }
                                         String st = org.example.weathercastbot.util.TimeFormatUtil.formatWithDayOfWeek(stFull);
                                         if (etFull.length() >= 16) {
                                             st += "~" + etFull.substring(11, 16);
@@ -442,7 +448,7 @@ public class CWAServiceImpl implements CWAService {
                                         
                                         java.time.LocalDateTime nowTpe = java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Taipei"));
                                         // Only trigger alerts for events starting in the future and within the next 24 hours
-                                        if (startTime.isBefore(maxAlertTime) && startTime.isAfter(nowTpe)) {
+                                        if (startTime.isBefore(maxAlertTime) && endTime.isAfter(nowTpe)) {
                                             if (pop >= 50 && startTimeBlock == null) {
                                                 startTimeBlock = st;
                                                 startPop = pop;
