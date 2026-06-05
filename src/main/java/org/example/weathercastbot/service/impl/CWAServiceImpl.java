@@ -263,6 +263,67 @@ public class CWAServiceImpl implements CWAService {
     }
 
     @Override
+    public java.util.List<String> getWeatherWarnings(String locationName) {
+        String normalizedLocation = normalizeLocationName(locationName);
+        java.util.List<String> warnings = new java.util.ArrayList<>();
+        if (normalizedLocation == null) return warnings;
+
+        String url = String.format("https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0033-002?Authorization=%s", apiKey);
+
+        try {
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder().uri(java.net.URI.create(url)).GET().build();
+            java.net.http.HttpResponse<String> response = fetchWithRetry(request);
+            if (response.statusCode() != 200) return warnings;
+
+            org.json.JSONObject json = new org.json.JSONObject(response.body());
+            org.json.JSONObject records = json.optJSONObject("records");
+            if (records == null) return warnings;
+            
+            org.json.JSONArray recordArr = records.optJSONArray("record");
+            if (recordArr == null || recordArr.length() == 0) return warnings;
+
+            for (int i = 0; i < recordArr.length(); i++) {
+                org.json.JSONObject record = recordArr.getJSONObject(i);
+                
+                org.json.JSONObject hazardConditions = record.optJSONObject("hazardConditions");
+                if (hazardConditions == null) continue;
+
+                org.json.JSONArray hazards = hazardConditions.optJSONArray("hazards");
+                if (hazards == null) continue;
+
+                for (int j = 0; j < hazards.length(); j++) {
+                    org.json.JSONObject hazard = hazards.getJSONObject(j);
+                    org.json.JSONObject info = hazard.optJSONObject("info");
+                    if (info == null) continue;
+
+                    String language = info.optString("language", "");
+                    if ("zh-TW".equals(language)) {
+                        org.json.JSONObject affectedAreas = info.optJSONObject("affectedAreas");
+                        if (affectedAreas != null) {
+                            org.json.JSONArray locations = affectedAreas.optJSONArray("location");
+                            if (locations != null) {
+                                for (int k = 0; k < locations.length(); k++) {
+                                    org.json.JSONObject loc = locations.getJSONObject(k);
+                                    String locName = loc.optString("locationName", "");
+                                    if (!locName.isEmpty() && (locName.contains(normalizedLocation) || normalizedLocation.contains(locName))) {
+                                        String phenomena = info.optString("phenomena", "");
+                                        String significance = info.optString("significance", "");
+                                        warnings.add(phenomena + significance);
+                                        break; 
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error fetching weather warnings: ", e);
+        }
+        return warnings;
+    }
+
+    @Override
     public java.util.List<EarthquakeDto> getLatestEarthquakes() {
         java.util.List<EarthquakeDto> results = new java.util.ArrayList<>();
         

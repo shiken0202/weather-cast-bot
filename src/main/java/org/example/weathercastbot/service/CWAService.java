@@ -36,6 +36,13 @@ public interface CWAService {
     Optional<String> getRealTimeObservation(String locationName);
 
     /**
+     * Gets active general weather warnings (e.g. Heavy Rain, Strong Wind) from W-C0033-002.
+     * @param locationName the location name to filter (e.g. 台北市)
+     * @return List of active weather warnings
+     */
+    java.util.List<String> getWeatherWarnings(String locationName);
+
+    /**
      * Gets active thunderstorm alerts.
      * @param locationName the location name to filter (e.g. 台北市)
      * @return Optional containing the thunderstorm alert if present

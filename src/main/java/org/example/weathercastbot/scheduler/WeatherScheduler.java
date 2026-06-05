@@ -161,6 +161,29 @@ public class WeatherScheduler {
                     notified.remove("THUNDERSTORM");
                 }
 
+                java.util.List<String> activeWarnings = cwaService.getWeatherWarnings(location.getName());
+                for (String warning : activeWarnings) {
+                    String warningKey = "WARNING_" + warning;
+                    if (!notified.contains(warningKey)) {
+                        String template = String.format("⚠️ 天氣特報：【%%s】%s！請特別留意天氣變化。", warning);
+                        for (Subscriber sub : location.getSubscribers()) {
+                            subscriberAlertMap.computeIfAbsent(sub, k -> new java.util.LinkedHashMap<>())
+                                              .computeIfAbsent(template, k -> new java.util.ArrayList<>())
+                                              .add(location.getName());
+                        }
+                        rainAlertBlockRepository.save(new RainAlertBlock(null, location.getId(), warningKey));
+                        notified.add(warningKey);
+                    }
+                }
+
+                java.util.List<String> activeWarningKeys = activeWarnings.stream().map(w -> "WARNING_" + w).collect(java.util.stream.Collectors.toList());
+                for (RainAlertBlock alertBlock : notifiedBlocks) {
+                    if (alertBlock.getTimeBlock().startsWith("WARNING_") && !activeWarningKeys.contains(alertBlock.getTimeBlock())) {
+                        rainAlertBlockRepository.delete(alertBlock);
+                        notified.remove(alertBlock.getTimeBlock());
+                    }
+                }
+
                 Optional<org.example.weathercastbot.dto.TownshipForecastDto> townOpt = cwaService.get3HourForecast(county, town);
                 
                 boolean isHeavyStorm = notified.contains("HEAVY_STORM");
