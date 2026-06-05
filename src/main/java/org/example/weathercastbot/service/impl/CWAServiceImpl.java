@@ -216,42 +216,32 @@ public class CWAServiceImpl implements CWAService {
         if (normalizedLocation == null) return Optional.empty();
 
         try {
-            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
-            HttpResponse<String> response = fetchWithRetry(request);
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder().uri(java.net.URI.create(url)).GET().build();
+            java.net.http.HttpResponse<String> response = fetchWithRetry(request);
             if (response.statusCode() != 200) return Optional.empty();
 
-            JSONObject json = new JSONObject(response.body());
-            JSONObject records = json.optJSONObject("records");
+            org.json.JSONObject json = new org.json.JSONObject(response.body());
+            org.json.JSONObject records = json.optJSONObject("records");
             if (records == null) return Optional.empty();
             
-            JSONArray recordArr = records.optJSONArray("record");
-            if (recordArr == null || recordArr.length() == 0) return Optional.empty();
+            org.json.JSONArray infoArr = records.optJSONArray("info");
+            if (infoArr == null || infoArr.length() == 0) return Optional.empty();
 
-            for (int i = 0; i < recordArr.length(); i++) {
-                JSONObject record = recordArr.getJSONObject(i);
-                JSONObject hazardConditions = record.optJSONObject("hazardConditions");
-                if (hazardConditions == null) continue;
+            for (int i = 0; i < infoArr.length(); i++) {
+                org.json.JSONObject info = infoArr.getJSONObject(i);
+                String language = info.optString("language", "");
+                if (!"zh-TW".equals(language)) continue;
+                
+                org.json.JSONArray areas = info.optJSONArray("area");
+                if (areas == null) continue;
 
-                JSONArray hazards = hazardConditions.optJSONArray("hazards");
-                if (hazards == null) continue;
-
-                for (int j = 0; j < hazards.length(); j++) {
-                    JSONObject hazard = hazards.getJSONObject(j);
-                    JSONObject info = hazard.optJSONObject("info");
-                    if (info == null) continue;
-
-                    String language = info.optString("language", "");
-                    if ("zh-TW".equals(language)) {
-                        JSONArray affectedAreas = info.optJSONArray("affectedAreas");
-                        if (affectedAreas != null) {
-                            for (int k = 0; k < affectedAreas.length(); k++) {
-                                JSONObject area = affectedAreas.getJSONObject(k);
-                                String areaDesc = area.optString("areaDesc", "");
-                                if (!areaDesc.isEmpty() && (areaDesc.contains(normalizedLocation) || normalizedLocation.contains(areaDesc))) {
-                                    String event = info.optString("event", "大雷雨");
-                                    return Optional.of(event + " 即時特報！請慎防劇烈降雨、雷擊。");
-                                }
-                            }
+                for (int k = 0; k < areas.length(); k++) {
+                    org.json.JSONObject area = areas.getJSONObject(k);
+                    String areaDesc = area.optString("areaDesc", "");
+                    if (!areaDesc.isEmpty() && (areaDesc.contains(normalizedLocation) || normalizedLocation.contains(areaDesc))) {
+                        String headline = info.optString("headline", "大雷雨特報");
+                        if (headline.contains("大雷雨") || headline.contains("雷雨")) {
+                            return Optional.of(headline + " 即時特報！請慎防劇烈降雨、雷擊。");
                         }
                     }
                 }
@@ -288,7 +278,10 @@ public class CWAServiceImpl implements CWAService {
                 org.json.JSONObject hazardConditions = record.optJSONObject("hazardConditions");
                 if (hazardConditions == null) continue;
 
-                org.json.JSONArray hazards = hazardConditions.optJSONArray("hazards");
+                org.json.JSONObject hazardsObj = hazardConditions.optJSONObject("hazards");
+                if (hazardsObj == null) continue;
+
+                org.json.JSONArray hazards = hazardsObj.optJSONArray("hazard");
                 if (hazards == null) continue;
 
                 for (int j = 0; j < hazards.length(); j++) {
