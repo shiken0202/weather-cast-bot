@@ -153,6 +153,12 @@ public class WeatherScheduler {
                 }
             } else {
                 if (notified.contains("THUNDERSTORM")) {
+                    String template = "✅ 警報解除：【%s】大雷雨即時特報已解除。";
+                    for (Subscriber sub : location.getSubscribers()) {
+                        subscriberAlertMap.computeIfAbsent(sub, k -> new java.util.LinkedHashMap<>())
+                                          .computeIfAbsent(template, k -> new java.util.ArrayList<>())
+                                          .add(location.getName());
+                    }
                     for (RainAlertBlock alertBlock : notifiedBlocks) {
                         if ("THUNDERSTORM".equals(alertBlock.getTimeBlock())) {
                             rainAlertBlockRepository.delete(alertBlock);
@@ -179,6 +185,13 @@ public class WeatherScheduler {
                 java.util.List<String> activeWarningKeys = activeWarnings.stream().map(w -> "WARNING_" + w).collect(java.util.stream.Collectors.toList());
                 for (RainAlertBlock alertBlock : notifiedBlocks) {
                     if (alertBlock.getTimeBlock().startsWith("WARNING_") && !activeWarningKeys.contains(alertBlock.getTimeBlock())) {
+                        String warningName = alertBlock.getTimeBlock().substring("WARNING_".length());
+                        String template = String.format("✅ 警報解除：【%%s】%s已解除。", warningName);
+                        for (Subscriber sub : location.getSubscribers()) {
+                            subscriberAlertMap.computeIfAbsent(sub, k -> new java.util.LinkedHashMap<>())
+                                              .computeIfAbsent(template, k -> new java.util.ArrayList<>())
+                                              .add(location.getName());
+                        }
                         rainAlertBlockRepository.delete(alertBlock);
                         notified.remove(alertBlock.getTimeBlock());
                     }
