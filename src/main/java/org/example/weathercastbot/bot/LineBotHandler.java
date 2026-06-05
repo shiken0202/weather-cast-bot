@@ -178,16 +178,22 @@ public class LineBotHandler {
                     CompletableFuture<String> rtcFut = CompletableFuture.supplyAsync(() -> cwaService.getRealTimeObservation(locationAlias).orElse(null));
                     CompletableFuture<org.example.weathercastbot.dto.TownshipForecastDto> townFut = CompletableFuture.supplyAsync(() -> cwaService.get3HourForecast(county, town).orElse(null));
                     CompletableFuture<String> weeklyFut = CompletableFuture.supplyAsync(() -> cwaService.getWeeklyForecast(county, town).orElse(null));
+                    CompletableFuture<Optional<String>> thunderstormFut = CompletableFuture.supplyAsync(() -> cwaService.getThunderstormAlerts(locationAlias));
+                    CompletableFuture<List<String>> warningsFut = CompletableFuture.supplyAsync(() -> cwaService.getWeatherWarnings(locationAlias));
 
-                    CompletableFuture.allOf(dailyFut, rtcFut, townFut, weeklyFut).join();
+                    CompletableFuture.allOf(dailyFut, rtcFut, townFut, weeklyFut, thunderstormFut, warningsFut).join();
 
                     WeatherInfoDto daily = dailyFut.join();
                     String rtc = rtcFut.join();
                     String town3h = townFut.join() != null ? townFut.join().getWeeklyWeatherContext() : null;
                     String weekly = weeklyFut.join();
+                    Optional<String> thunderstorm = thunderstormFut.join();
+                    List<String> warnings = warningsFut.join();
 
                     StringBuilder sb = new StringBuilder();
                     sb.append("---【").append(locationAlias).append("】---\n");
+                    if (thunderstorm.isPresent()) sb.append("大雷雨特報: ").append(thunderstorm.get()).append("\n");
+                    if (!warnings.isEmpty()) sb.append("天氣警特報: ").append(String.join(", ", warnings)).append("\n");
                     if (daily != null) {
                         sb.append("近期概況: ").append(daily.getDescription())
                           .append(", 降雨機率=").append(daily.getRainProbability())
