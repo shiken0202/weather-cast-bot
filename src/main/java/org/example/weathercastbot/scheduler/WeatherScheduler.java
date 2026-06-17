@@ -171,7 +171,23 @@ public class WeatherScheduler {
                 for (String warning : activeWarnings) {
                     String warningKey = "WARNING_" + warning;
                     if (!notified.contains(warningKey)) {
-                        String template = String.format("⚠️ 天氣特報：【%%s】%s！請特別留意天氣變化。", warning);
+                        String oldWarning = null;
+                        if (warning.endsWith("雨特報")) {
+                            for (RainAlertBlock b : notifiedBlocks) {
+                                if (b.getTimeBlock().startsWith("WARNING_") && b.getTimeBlock().endsWith("雨特報")) {
+                                    oldWarning = b.getTimeBlock().substring("WARNING_".length());
+                                    break;
+                                }
+                            }
+                        }
+
+                        String template;
+                        if (oldWarning != null) {
+                            template = String.format("⚠️ 天氣特報更新：【%%s】已由%s轉為%s！請謹慎小心。", oldWarning, warning);
+                        } else {
+                            template = String.format("⚠️ 天氣特報：【%%s】%s！請特別留意天氣變化。", warning);
+                        }
+                        
                         for (Subscriber sub : location.getSubscribers()) {
                             subscriberAlertMap.computeIfAbsent(sub, k -> new java.util.LinkedHashMap<>())
                                               .computeIfAbsent(template, k -> new java.util.ArrayList<>())
@@ -186,11 +202,24 @@ public class WeatherScheduler {
                 for (RainAlertBlock alertBlock : notifiedBlocks) {
                     if (alertBlock.getTimeBlock().startsWith("WARNING_") && !activeWarningKeys.contains(alertBlock.getTimeBlock())) {
                         String warningName = alertBlock.getTimeBlock().substring("WARNING_".length());
-                        String template = String.format("✅ 警報解除：【%%s】%s已解除。", warningName);
-                        for (Subscriber sub : location.getSubscribers()) {
-                            subscriberAlertMap.computeIfAbsent(sub, k -> new java.util.LinkedHashMap<>())
-                                              .computeIfAbsent(template, k -> new java.util.ArrayList<>())
-                                              .add(location.getName());
+                        
+                        boolean replaced = false;
+                        if (warningName.endsWith("雨特報")) {
+                            for (String active : activeWarnings) {
+                                if (active.endsWith("雨特報")) {
+                                    replaced = true;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (!replaced) {
+                            String template = String.format("✅ 警報解除：【%%s】%s已解除。", warningName);
+                            for (Subscriber sub : location.getSubscribers()) {
+                                subscriberAlertMap.computeIfAbsent(sub, k -> new java.util.LinkedHashMap<>())
+                                                  .computeIfAbsent(template, k -> new java.util.ArrayList<>())
+                                                  .add(location.getName());
+                            }
                         }
                         rainAlertBlockRepository.delete(alertBlock);
                         notified.remove(alertBlock.getTimeBlock());
