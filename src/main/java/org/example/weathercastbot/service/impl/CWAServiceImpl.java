@@ -550,7 +550,7 @@ public class CWAServiceImpl implements CWAService {
                     JSONArray times = we.optJSONArray("Time");
                     if (times != null && times.length() > 0) {
                         todayStr = times.getJSONObject(0).optString("StartTime", "").substring(0, 10);
-                        java.time.LocalDateTime maxAlertTime = java.time.LocalDateTime.now().plusHours(14);
+                        java.time.LocalDateTime maxAlertTime = java.time.LocalDateTime.now().plusHours(6);
                         java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
                         // Find the time block with the HIGHEST PoP and the FIRST block >= 50%
@@ -939,10 +939,14 @@ public class CWAServiceImpl implements CWAService {
     }
 
     private HttpResponse<String> fetchWithRetry(HttpRequest request) throws Exception {
+        HttpRequest newRequest = HttpRequest.newBuilder(request, (n, v) -> true)
+                .timeout(java.time.Duration.ofSeconds(10))
+                .build();
+        
         int maxRetries = 3;
         for (int i = 0; i < maxRetries; i++) {
             try {
-                return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                return httpClient.send(newRequest, HttpResponse.BodyHandlers.ofString());
             } catch (Exception e) {
                 if (i == maxRetries - 1) throw e;
                 log.warn("API request failed (Attempt {}/{}). Retrying in 1 second...", i + 1, maxRetries);
