@@ -237,6 +237,9 @@ public class WeatherScheduler {
                     
                     if (maxPop >= 70 && !isHeavyStorm) {
                         String startBlock = townOpt.get().getRainStartTimeBlock();
+                        if (startBlock == null) {
+                            startBlock = townOpt.get().getUpcomingRainTimeBlock();
+                        }
                         String startFmt = "";
                         if (startBlock != null) {
                             startFmt = org.example.weathercastbot.util.TimeFormatUtil.convertToRelativeDay(startBlock).split("~")[0] + " 以後";
@@ -266,6 +269,9 @@ public class WeatherScheduler {
                         
                     } else if (maxPop >= 40 && maxPop < 70 && !isNormalStorm && !isHeavyStorm) {
                         String startBlock = townOpt.get().getRainStartTimeBlock();
+                        if (startBlock == null) {
+                            startBlock = townOpt.get().getUpcomingRainTimeBlock();
+                        }
                         String startFmt = "";
                         if (startBlock != null) {
                             startFmt = org.example.weathercastbot.util.TimeFormatUtil.convertToRelativeDay(startBlock).split("~")[0] + " 以後";
