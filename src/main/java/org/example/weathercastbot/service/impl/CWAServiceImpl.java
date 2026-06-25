@@ -582,9 +582,11 @@ public class CWAServiceImpl implements CWAService {
                                             st += "~" + etFull.substring(11, 16);
                                         }
                                         
-                                        popTimeline.put(st, pop);
-                                        
                                         java.time.LocalDateTime nowTpe = java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Taipei"));
+                                        if (endTime.isAfter(nowTpe)) {
+                                            popTimeline.put(st, pop);
+                                        }
+                                        
                                         // Only trigger alerts for events starting in the future and within the next 24 hours
                                         if (startTime.isBefore(maxAlertTime) && endTime.isAfter(nowTpe)) {
                                             if (pop >= 50 && startTimeBlock == null) {
