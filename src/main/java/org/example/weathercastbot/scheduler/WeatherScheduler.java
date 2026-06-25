@@ -300,7 +300,26 @@ public class WeatherScheduler {
                         }
                         
                     } else if (maxPop <= 20 && (isNormalStorm || isHeavyStorm || isLegacyStorm)) {
-                        String template = String.format("🔄 天氣更新：【%%s】未來降雨機率已全面下修至 %d%%%%，警報解除！但仍須注意地面積水或偶發毛毛雨。", maxPop);
+                        String template;
+                        boolean willRainLater = false;
+                        String laterTime = "";
+                        int laterPop = 0;
+                        if (townOpt.get().getPopTimeline() != null) {
+                            for (java.util.Map.Entry<String, Integer> entry : townOpt.get().getPopTimeline().entrySet()) {
+                                if (entry.getValue() >= 40) {
+                                    willRainLater = true;
+                                    laterTime = entry.getKey().split("~")[0] + " 以後";
+                                    laterPop = entry.getValue();
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (willRainLater) {
+                            template = String.format("🔄 天氣更新：【%%s】目前降雨機率已下修至 %d%%%%，並預計於 %s 回升至 %d%%%%！請持續留意天氣變化。", maxPop, laterTime, laterPop);
+                        } else {
+                            template = String.format("✅ 警報解除：【%%s】未來降雨機率已全面下修至 %d%%%%！但仍須注意地面積水或偶發毛毛雨。", maxPop);
+                        }
                         for (Subscriber sub : location.getSubscribers()) {
                             subscriberAlertMap.computeIfAbsent(sub, k -> new java.util.LinkedHashMap<>())
                                               .computeIfAbsent(template, k -> new java.util.ArrayList<>())

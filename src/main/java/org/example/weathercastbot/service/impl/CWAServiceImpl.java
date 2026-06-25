@@ -540,7 +540,7 @@ public class CWAServiceImpl implements CWAService {
             String todayStr = null;
             boolean hasRainToday = false;
             
-            java.util.Map<String, Integer> popTimeline = new java.util.HashMap<>();
+            java.util.Map<String, Integer> popTimeline = new java.util.LinkedHashMap<>();
             
             for (int i = 0; i < weatherElements.length(); i++) {
                 JSONObject we = weatherElements.getJSONObject(i);
