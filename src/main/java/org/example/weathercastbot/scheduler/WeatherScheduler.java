@@ -241,11 +241,25 @@ public class WeatherScheduler {
                             startBlock = townOpt.get().getUpcomingRainTimeBlock();
                         }
                         String startFmt = "";
+                        boolean isAlreadyStarted = false;
                         if (startBlock != null) {
-                            startFmt = org.example.weathercastbot.util.TimeFormatUtil.convertToRelativeDay(startBlock).split("~")[0] + " 以後";
+                            String relativeDay = org.example.weathercastbot.util.TimeFormatUtil.convertToRelativeDay(startBlock);
+                            try {
+                                String timePart = startBlock.split(" ")[1].split("~")[0];
+                                java.time.LocalTime stTime = java.time.LocalTime.parse(timePart);
+                                if (relativeDay.startsWith("本日") && java.time.LocalTime.now(java.time.ZoneId.of("Asia/Taipei")).isAfter(stTime)) {
+                                    isAlreadyStarted = true;
+                                }
+                            } catch (Exception e) {}
+                            startFmt = relativeDay.split("~")[0] + " 以後";
                         }
                         
-                        String template = String.format("🚨 大雨預警：【%%s】預計於 %s 降雨機率高達 %d%%%%！請留意較大雨勢！", startFmt, maxPop);
+                        String template;
+                        if (isAlreadyStarted) {
+                            template = String.format("🚨 大雨預警：【%%s】目前降雨機率高達 %d%%%%！請留意較大雨勢！", maxPop);
+                        } else {
+                            template = String.format("🚨 大雨預警：【%%s】預計於 %s 降雨機率高達 %d%%%%！請留意較大雨勢！", startFmt, maxPop);
+                        }
                         for (Subscriber sub : location.getSubscribers()) {
                             subscriberAlertMap.computeIfAbsent(sub, k -> new java.util.LinkedHashMap<>())
                                               .computeIfAbsent(template, k -> new java.util.ArrayList<>())
@@ -273,11 +287,25 @@ public class WeatherScheduler {
                             startBlock = townOpt.get().getUpcomingRainTimeBlock();
                         }
                         String startFmt = "";
+                        boolean isAlreadyStarted = false;
                         if (startBlock != null) {
-                            startFmt = org.example.weathercastbot.util.TimeFormatUtil.convertToRelativeDay(startBlock).split("~")[0] + " 以後";
+                            String relativeDay = org.example.weathercastbot.util.TimeFormatUtil.convertToRelativeDay(startBlock);
+                            try {
+                                String timePart = startBlock.split(" ")[1].split("~")[0];
+                                java.time.LocalTime stTime = java.time.LocalTime.parse(timePart);
+                                if (relativeDay.startsWith("本日") && java.time.LocalTime.now(java.time.ZoneId.of("Asia/Taipei")).isAfter(stTime)) {
+                                    isAlreadyStarted = true;
+                                }
+                            } catch (Exception e) {}
+                            startFmt = relativeDay.split("~")[0] + " 以後";
                         }
                         
-                        String template = String.format("☔️ 降雨預警：【%%s】預計於 %s 降雨機率將來到 %d%%%%，出門建議攜帶雨具。", startFmt, maxPop);
+                        String template;
+                        if (isAlreadyStarted) {
+                            template = String.format("☔️ 降雨預警：【%%s】目前降雨機率將來到 %d%%%%，出門建議攜帶雨具。", maxPop);
+                        } else {
+                            template = String.format("☔️ 降雨預警：【%%s】預計於 %s 降雨機率將來到 %d%%%%，出門建議攜帶雨具。", startFmt, maxPop);
+                        }
                         for (Subscriber sub : location.getSubscribers()) {
                             subscriberAlertMap.computeIfAbsent(sub, k -> new java.util.LinkedHashMap<>())
                                               .computeIfAbsent(template, k -> new java.util.ArrayList<>())
