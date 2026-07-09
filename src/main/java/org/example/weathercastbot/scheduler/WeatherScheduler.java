@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.weathercastbot.bot.DiscordBotService;
 import org.example.weathercastbot.bot.LineBotHandler;
 import org.example.weathercastbot.dto.EarthquakeDto;
+import org.example.weathercastbot.dto.TyphoonDto;
 import org.example.weathercastbot.dto.WeatherInfoDto;
 import org.example.weathercastbot.entity.Location;
 import org.example.weathercastbot.entity.Platform;
@@ -26,6 +27,8 @@ import org.example.weathercastbot.model.RainAlertBlock;
 public class WeatherScheduler {
 
     private final java.util.Set<String> processedEarthquakes = new java.util.concurrent.ConcurrentSkipListSet<>();
+    private final java.util.Set<String> processedTyphoons = new java.util.concurrent.ConcurrentSkipListSet<>();
+    private final java.util.Set<String> activeTyphoons = new java.util.concurrent.ConcurrentSkipListSet<>();
     
     private final SubscriptionService subscriptionService;
     private final CWAService cwaService;

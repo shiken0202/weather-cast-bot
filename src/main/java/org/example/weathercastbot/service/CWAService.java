@@ -1,6 +1,7 @@
 package org.example.weathercastbot.service;
 
 import org.example.weathercastbot.dto.EarthquakeDto;
+import org.example.weathercastbot.dto.TyphoonDto;
 import org.example.weathercastbot.dto.TownshipForecastDto;
 import org.example.weathercastbot.dto.WeatherInfoDto;
 
@@ -60,6 +61,12 @@ public interface CWAService {
      * @return List containing the latest earthquake DTOs.
      */
     java.util.List<EarthquakeDto> getLatestEarthquakes();
+
+    /**
+     * Retrieves the latest typhoon warnings.
+     * @return List containing the latest typhoon DTOs.
+     */
+    java.util.List<TyphoonDto> getLatestTyphoonWarnings();
 
     /**
      * Gets the 3-day 3-hour forecast for a specific township (F-D0047-089).

@@ -1,6 +1,7 @@
 package org.example.weathercastbot.service.impl;
 
 import org.example.weathercastbot.dto.EarthquakeDto;
+import org.example.weathercastbot.dto.TyphoonDto;
 import org.example.weathercastbot.dto.TownshipForecastDto;
 import org.example.weathercastbot.dto.WeatherInfoDto;
 import org.example.weathercastbot.service.CWAService;
@@ -486,6 +487,58 @@ public class CWAServiceImpl implements CWAService {
             log.error("Error fetching earthquake data from {}: ", endpoint, e);
         }
         return null;
+    }
+
+    @Override
+    public java.util.List<TyphoonDto> getLatestTyphoonWarnings() {
+        java.util.List<TyphoonDto> results = new java.util.ArrayList<>();
+        try {
+            String url = String.format("https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0034-005?Authorization=%s&format=JSON", apiKey);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(java.time.Duration.ofSeconds(10))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                JSONObject json = new JSONObject(response.body());
+                JSONObject records = json.optJSONObject("records");
+                if (records != null) {
+                    // Try different possible JSON keys for typhoon data based on CWA format
+                    JSONArray cyclones = records.optJSONArray("tropicalCyclones");
+                    if (cyclones == null) {
+                         cyclones = records.optJSONArray("dataset");
+                    }
+                    if (cyclones != null) {
+                        for (int i = 0; i < cyclones.length(); i++) {
+                            JSONObject cyclone = cyclones.getJSONObject(i);
+                            String typhoonName = cyclone.optString("typhoonName", cyclone.optString("datasetInfo", "未知颱風"));
+                            
+                            // Basic parsing assuming CWA standard warning format
+                            JSONObject warning = cyclone.optJSONObject("warning");
+                            if (warning != null) {
+                                String warningType = warning.optString("warningType", "颱風警報");
+                                String reportNumber = warning.optString("reportNumber", "");
+                                String content = warning.optString("content", "");
+                                String updateTime = warning.optString("updateTime", "");
+                                
+                                results.add(TyphoonDto.builder()
+                                    .typhoonName(typhoonName)
+                                    .warningType(warningType)
+                                    .reportNumber(reportNumber)
+                                    .content(content)
+                                    .updateTime(updateTime)
+                                    .build());
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error fetching typhoon data: ", e);
+        }
+        return results;
     }
 
     @Override
