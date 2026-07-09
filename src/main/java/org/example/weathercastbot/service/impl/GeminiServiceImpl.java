@@ -79,37 +79,58 @@ public class GeminiServiceImpl implements GeminiService {
     }
 
     private String executeGeminiCall(GeminiRequestDto requestDto) {
-        try {
-            String requestBody = objectMapper.writeValueAsString(requestDto);
-            String url = String.format(
-                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=%s",
-                    apiKey);
+        int maxRetries = 3;
+        int delayMs = 2000;
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                    .build();
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                String requestBody = objectMapper.writeValueAsString(requestDto);
+                String url = String.format(
+                        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=%s",
+                        apiKey);
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(url))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                        .build();
 
-            if (response.statusCode() != 200) {
-                log.error("Failed to fetch Gemini data: HTTP {} - {}", response.statusCode(), response.body());
-                return "抱歉，目前無法存取 AI 服務。";
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+                if (response.statusCode() != 200) {
+                    log.warn("Gemini API error (Attempt {}/{}): HTTP {} - {}", attempt, maxRetries, response.statusCode(), response.body());
+                    if (attempt < maxRetries && (response.statusCode() == 503 || response.statusCode() == 429 || response.statusCode() >= 500)) {
+                        Thread.sleep(delayMs);
+                        delayMs *= 2; // Exponential backoff: 2s -> 4s
+                        continue;
+                    }
+                    log.error("Failed to fetch Gemini data after {} attempts", maxRetries);
+                    return "抱歉，目前無法存取 AI 服務。";
+                }
+
+                GeminiResponseDto responseDto = objectMapper.readValue(response.body(), GeminiResponseDto.class);
+                String result = sanitizeResponse(responseDto.getText());
+                if (result.isEmpty()) {
+                    log.error("Gemini returned an empty or completely hallucinated response.");
+                    return "抱歉，目前 AI 產生了異常的內容，無法為您解析天氣，請稍後再試！";
+                }
+                return result;
+
+            } catch (Exception e) {
+                log.error("Error calling Gemini API (Attempt {}/{}): ", attempt, maxRetries, e);
+                if (attempt < maxRetries) {
+                    try {
+                        Thread.sleep(delayMs);
+                        delayMs *= 2;
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                    }
+                    continue;
+                }
+                return "很抱歉，我目前無法連上大腦網路，無法回答您的問題。請稍後再試！";
             }
-
-            GeminiResponseDto responseDto = objectMapper.readValue(response.body(), GeminiResponseDto.class);
-            String result = sanitizeResponse(responseDto.getText());
-            if (result.isEmpty()) {
-                log.error("Gemini returned an empty or completely hallucinated response.");
-                return "抱歉，目前 AI 產生了異常的內容，無法為您解析天氣，請稍後再試！";
-            }
-            return result;
-
-        } catch (Exception e) {
-            log.error("Error calling Gemini API: ", e);
-            return "很抱歉，我目前無法連上大腦網路，無法回答您的問題。請稍後再試！";
         }
+        return "抱歉，目前無法存取 AI 服務。";
     }
 
     /**
