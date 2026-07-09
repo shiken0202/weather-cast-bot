@@ -105,7 +105,7 @@ public class GeminiServiceImpl implements GeminiService {
                         continue;
                     }
                     log.error("Failed to fetch Gemini data after {} attempts", maxRetries);
-                    return "抱歉，目前無法存取 AI 服務。";
+                    return "抱歉，目前 Google AI 伺服器正面臨瞬間的全球高流量，導致服務暫時無回應。系統已嘗試重新連線但未成功，請您稍後再試一次！";
                 }
 
                 GeminiResponseDto responseDto = objectMapper.readValue(response.body(), GeminiResponseDto.class);
@@ -130,7 +130,7 @@ public class GeminiServiceImpl implements GeminiService {
                 return "很抱歉，我目前無法連上大腦網路，無法回答您的問題。請稍後再試！";
             }
         }
-        return "抱歉，目前無法存取 AI 服務。";
+        return "抱歉，目前 Google AI 伺服器正面臨瞬間的全球高流量，導致服務暫時無回應。系統已嘗試重新連線但未成功，請您稍後再試一次！";
     }
 
     /**
