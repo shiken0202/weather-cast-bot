@@ -447,11 +447,12 @@ public class WeatherScheduler {
         List<EarthquakeDto> eqs = cwaService.getLatestEarthquakes();
         if (eqs == null || eqs.isEmpty()) return;
 
+        boolean isStartup = processedEarthquakes.isEmpty();
+
         for (EarthquakeDto eq : eqs) {
             if (eq == null || eq.getEarthquakeNo() == null || eq.getEarthquakeNo().isEmpty()) continue;
             
             if (!processedEarthquakes.contains(eq.getEarthquakeNo())) {
-                boolean isStartup = processedEarthquakes.isEmpty();
                 processedEarthquakes.add(eq.getEarthquakeNo());
                 
                 // Keep set small to prevent memory leaks over time
