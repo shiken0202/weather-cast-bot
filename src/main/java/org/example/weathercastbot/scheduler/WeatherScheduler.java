@@ -170,8 +170,10 @@ public class WeatherScheduler {
                     notified.remove("THUNDERSTORM");
                 }
 
-                java.util.List<String> activeWarnings = cwaService.getWeatherWarnings(location.getName());
-                for (String warning : activeWarnings) {
+                java.util.List<org.example.weathercastbot.dto.WeatherWarningDto> activeWarnings = cwaService.getWeatherWarnings(location.getName());
+                for (org.example.weathercastbot.dto.WeatherWarningDto warningDto : activeWarnings) {
+                    String warning = warningDto.getWarningName();
+                    String description = warningDto.getDescription();
                     String warningKey = "WARNING_" + warning;
                     if (!notified.contains(warningKey)) {
                         String oldWarning = null;
@@ -186,9 +188,9 @@ public class WeatherScheduler {
 
                         String template;
                         if (oldWarning != null) {
-                            template = String.format("⚠️ 天氣特報更新：【%%s】已由%s轉為%s！請謹慎小心。", oldWarning, warning);
+                            template = String.format("⚠️ 天氣特報更新：【%%s】已由%s轉為%s！\n📝 氣象署說明：%s\n請謹慎小心。", oldWarning, warning, description);
                         } else {
-                            template = String.format("⚠️ 天氣特報：【%%s】%s！請特別留意天氣變化。", warning);
+                            template = String.format("⚠️ 天氣特報：【%%s】%s！\n📝 氣象署說明：%s\n請特別留意天氣變化。", warning, description);
                         }
                         
                         for (Subscriber sub : location.getSubscribers()) {
@@ -201,15 +203,15 @@ public class WeatherScheduler {
                     }
                 }
 
-                java.util.List<String> activeWarningKeys = activeWarnings.stream().map(w -> "WARNING_" + w).collect(java.util.stream.Collectors.toList());
+                java.util.List<String> activeWarningKeys = activeWarnings.stream().map(w -> "WARNING_" + w.getWarningName()).collect(java.util.stream.Collectors.toList());
                 for (RainAlertBlock alertBlock : notifiedBlocks) {
                     if (alertBlock.getTimeBlock().startsWith("WARNING_") && !activeWarningKeys.contains(alertBlock.getTimeBlock())) {
                         String warningName = alertBlock.getTimeBlock().substring("WARNING_".length());
                         
                         boolean replaced = false;
                         if (warningName.endsWith("雨特報")) {
-                            for (String active : activeWarnings) {
-                                if (active.endsWith("雨特報")) {
+                            for (org.example.weathercastbot.dto.WeatherWarningDto active : activeWarnings) {
+                                if (active.getWarningName().endsWith("雨特報")) {
                                     replaced = true;
                                     break;
                                 }

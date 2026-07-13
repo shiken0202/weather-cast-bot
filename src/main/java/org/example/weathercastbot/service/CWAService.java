@@ -4,6 +4,7 @@ import org.example.weathercastbot.dto.EarthquakeDto;
 import org.example.weathercastbot.dto.TyphoonDto;
 import org.example.weathercastbot.dto.TownshipForecastDto;
 import org.example.weathercastbot.dto.WeatherInfoDto;
+import org.example.weathercastbot.dto.WeatherWarningDto;
 
 import java.util.Optional;
 
@@ -41,7 +42,7 @@ public interface CWAService {
      * @param locationName the location name to filter (e.g. 台北市)
      * @return List of active weather warnings
      */
-    java.util.List<String> getWeatherWarnings(String locationName);
+    java.util.List<WeatherWarningDto> getWeatherWarnings(String locationName);
 
     /**
      * Gets active thunderstorm alerts.

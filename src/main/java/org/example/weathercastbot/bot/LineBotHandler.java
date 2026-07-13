@@ -179,7 +179,7 @@ public class LineBotHandler {
                     CompletableFuture<org.example.weathercastbot.dto.TownshipForecastDto> townFut = CompletableFuture.supplyAsync(() -> cwaService.get3HourForecast(county, town).orElse(null));
                     CompletableFuture<String> weeklyFut = CompletableFuture.supplyAsync(() -> cwaService.getWeeklyForecast(county, town).orElse(null));
                     CompletableFuture<Optional<String>> thunderstormFut = CompletableFuture.supplyAsync(() -> cwaService.getThunderstormAlerts(locationAlias));
-                    CompletableFuture<List<String>> warningsFut = CompletableFuture.supplyAsync(() -> cwaService.getWeatherWarnings(locationAlias));
+                    CompletableFuture<List<org.example.weathercastbot.dto.WeatherWarningDto>> warningsFut = CompletableFuture.supplyAsync(() -> cwaService.getWeatherWarnings(locationAlias));
 
                     CompletableFuture.allOf(dailyFut, rtcFut, townFut, weeklyFut, thunderstormFut, warningsFut).join();
 
@@ -188,7 +188,7 @@ public class LineBotHandler {
                     String town3h = townFut.join() != null ? townFut.join().getWeeklyWeatherContext() : null;
                     String weekly = weeklyFut.join();
                     Optional<String> thunderstorm = thunderstormFut.join();
-                    List<String> warnings = warningsFut.join();
+                    List<org.example.weathercastbot.dto.WeatherWarningDto> warnings = warningsFut.join();
                     
                     String globalWarnings = null;
                     if (message.contains("全台") || message.contains("台灣") || message.contains("哪個地區") || message.contains("哪裡") || message.contains("哪縣市")) {
@@ -198,7 +198,7 @@ public class LineBotHandler {
                     StringBuilder sb = new StringBuilder();
                     sb.append("---【").append(locationAlias).append("】---\n");
                     if (thunderstorm.isPresent()) sb.append("大雷雨特報: ").append(thunderstorm.get()).append("\n");
-                    if (!warnings.isEmpty()) sb.append("天氣警特報: ").append(String.join(", ", warnings)).append("\n");
+                    if (!warnings.isEmpty()) sb.append("天氣警特報: ").append(warnings.stream().map(org.example.weathercastbot.dto.WeatherWarningDto::getWarningName).collect(java.util.stream.Collectors.joining(", "))).append("\n");
                     if (globalWarnings != null) {
                         sb.append("全台警報摘要 (若使用者詢問全台狀況請參考此列表): ").append(globalWarnings).append("\n");
                     }

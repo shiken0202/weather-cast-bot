@@ -4,6 +4,7 @@ import org.example.weathercastbot.dto.EarthquakeDto;
 import org.example.weathercastbot.dto.TyphoonDto;
 import org.example.weathercastbot.dto.TownshipForecastDto;
 import org.example.weathercastbot.dto.WeatherInfoDto;
+import org.example.weathercastbot.dto.WeatherWarningDto;
 import org.example.weathercastbot.service.CWAService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -254,9 +255,9 @@ public class CWAServiceImpl implements CWAService {
     }
 
     @Override
-    public java.util.List<String> getWeatherWarnings(String locationName) {
+    public java.util.List<WeatherWarningDto> getWeatherWarnings(String locationName) {
         String normalizedLocation = normalizeLocationName(locationName);
-        java.util.List<String> warnings = new java.util.ArrayList<>();
+        java.util.List<WeatherWarningDto> warnings = new java.util.ArrayList<>();
         if (normalizedLocation == null) return warnings;
 
         String url = String.format("https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0033-002?Authorization=%s", apiKey);
@@ -302,7 +303,20 @@ public class CWAServiceImpl implements CWAService {
                                     if (!locName.isEmpty() && (locName.contains(normalizedLocation) || normalizedLocation.contains(locName))) {
                                         String phenomena = info.optString("phenomena", "");
                                         String significance = info.optString("significance", "");
-                                        warnings.add(phenomena + significance);
+                                        
+                                        String description = record.optJSONObject("datasetInfo") != null ? 
+                                                             record.optJSONObject("datasetInfo").optString("datasetDescription", "") : "";
+                                        
+                                        // Sometimes the detailed text is in datasetInfo.datasetDescription, sometimes in info.description
+                                        if (description.isEmpty() || !description.contains("。")) {
+                                            String infoDesc = info.optString("description", "");
+                                            if (!infoDesc.isEmpty()) description = infoDesc;
+                                        }
+                                        
+                                        warnings.add(WeatherWarningDto.builder()
+                                            .warningName(phenomena + significance)
+                                            .description(description)
+                                            .build());
                                         break; 
                                     }
                                 }
