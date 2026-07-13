@@ -304,13 +304,34 @@ public class CWAServiceImpl implements CWAService {
                                         String phenomena = info.optString("phenomena", "");
                                         String significance = info.optString("significance", "");
                                         
-                                        String description = record.optJSONObject("datasetInfo") != null ? 
-                                                             record.optJSONObject("datasetInfo").optString("datasetDescription", "") : "";
+                                        String description = "";
+                                        java.util.Queue<org.json.JSONObject> queue = new java.util.LinkedList<>();
+                                        queue.add(record);
+                                        while (!queue.isEmpty()) {
+                                            org.json.JSONObject obj = queue.poll();
+                                            for (String key : obj.keySet()) {
+                                                Object val = obj.opt(key);
+                                                if (val instanceof String) {
+                                                    String str = (String) val;
+                                                    if (str.contains("。") && str.length() > description.length()) {
+                                                        description = str;
+                                                    }
+                                                } else if (val instanceof org.json.JSONObject) {
+                                                    queue.add((org.json.JSONObject) val);
+                                                } else if (val instanceof org.json.JSONArray) {
+                                                    org.json.JSONArray arr = (org.json.JSONArray) val;
+                                                    for (int x = 0; x < arr.length(); x++) {
+                                                        Object item = arr.opt(x);
+                                                        if (item instanceof org.json.JSONObject) {
+                                                            queue.add((org.json.JSONObject) item);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                         
-                                        // Sometimes the detailed text is in datasetInfo.datasetDescription, sometimes in info.description
-                                        if (description.isEmpty() || !description.contains("。")) {
-                                            String infoDesc = info.optString("description", "");
-                                            if (!infoDesc.isEmpty()) description = infoDesc;
+                                        if (description.isEmpty()) {
+                                            description = phenomena + significance;
                                         }
                                         
                                         warnings.add(WeatherWarningDto.builder()
