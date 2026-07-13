@@ -603,7 +603,7 @@ public class CWAServiceImpl implements CWAService {
                     JSONArray times = we.optJSONArray("Time");
                     if (times != null && times.length() > 0) {
                         todayStr = times.getJSONObject(0).optString("StartTime", "").substring(0, 10);
-                        java.time.LocalDateTime maxAlertTime = java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Taipei")).plusHours(6);
+                        java.time.LocalDateTime maxAlertTime = java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Taipei")).plusMinutes(75);
                         java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
                         // Find the time block with the HIGHEST PoP and the FIRST block >= 50%
