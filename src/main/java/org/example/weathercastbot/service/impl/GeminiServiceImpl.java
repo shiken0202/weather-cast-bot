@@ -198,4 +198,41 @@ public class GeminiServiceImpl implements GeminiService {
         prompt.append("【重要指令】：回覆的首句請務必明確指出你正在播報的「縣市」與「鄉鎮」完整名稱（例如：「為您播報基隆市信義區的天氣...」或「關於臺北市信義區...」），以避免任何地名混淆！");
         return prompt.toString();
     }
+
+    @Override
+    public String rewriteWarningDescription(String locationName, String originalDescription) {
+        if (originalDescription == null || originalDescription.isEmpty()) {
+            return originalDescription;
+        }
+
+        try {
+            String promptStr = String.format("以下是中央氣象署針對某些特報發布的公版總結文字：\n" +
+                            "「%s」\n\n" +
+                            "這段文字通常會統稱某些地理範圍（例如「嘉義以北」、「中南部」等），導致特定縣市的居民不知道自己是否包含在內。\n" +
+                            "現在系統已經確認【%s】就在這次的特報影響範圍名單內。\n" +
+                            "請你將這段氣象署的說明文字重新「微調改寫」，讓它讀起來像是專門對【%s】的居民說的，明確提到該縣市也在範圍內。\n" +
+                            "規則：\n" +
+                            "1. 語氣保持專業、客觀（像是氣象播報員），絕對不要過度誇大。\n" +
+                            "2. 請保留原文中所有的降雨型態、影響現象（如坍方、落石、積水等），不可隨意刪減天氣現象描述。\n" +
+                            "3. 句子要精簡順暢，長度與原文差不多，不要變成一長串囉嗦的解釋。\n" +
+                            "4. 只輸出最終改寫的結果，不包含任何其他的對話或前言、問候語。",
+                    originalDescription, locationName, locationName);
+
+            GeminiRequestDto requestDto = GeminiRequestDto.builder()
+                    .contents(List.of(
+                            GeminiRequestDto.Content.builder()
+                                    .parts(List.of(GeminiRequestDto.Part.builder().text(promptStr).build()))
+                                    .build()))
+                    .build();
+
+            String result = executeGeminiCall(requestDto);
+            if (!result.contains("抱歉，目前")) {
+                return result.trim();
+            }
+        } catch (Exception e) {
+            log.error("Failed to rewrite warning description with Gemini for {}: ", locationName, e);
+        }
+
+        return originalDescription; // Fallback to original description if AI fails
+    }
 }

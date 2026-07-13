@@ -9,8 +9,11 @@ import org.example.weathercastbot.entity.Platform;
 import org.example.weathercastbot.entity.Subscriber;
 import org.example.weathercastbot.service.CWAService;
 import org.example.weathercastbot.service.SubscriptionService;
+import org.example.weathercastbot.service.GeminiService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,22 +27,24 @@ import static org.mockito.Mockito.*;
 public class WeatherSchedulerTest {
 
     private WeatherScheduler weatherScheduler;
-    private SubscriptionService subscriptionService;
-    private CWAService cwaService;
-    private DiscordBotService discordBotService;
-    private LineBotHandler lineBotHandler;
 
+    @Mock
+    private SubscriptionService subscriptionService;
+    @Mock
+    private CWAService cwaService;
+    @Mock
+    private GeminiService geminiService;
+    @Mock
+    private DiscordBotService discordBotService;
+    @Mock
+    private LineBotHandler lineBotHandler;
+    @Mock
     private RainAlertBlockRepository rainAlertBlockRepository;
 
     @BeforeEach
     public void setup() {
-        subscriptionService = mock(SubscriptionService.class);
-        cwaService = mock(CWAService.class);
-        discordBotService = mock(DiscordBotService.class);
-        lineBotHandler = mock(LineBotHandler.class);
-        rainAlertBlockRepository = mock(RainAlertBlockRepository.class);
-
-        weatherScheduler = new WeatherScheduler(subscriptionService, cwaService, discordBotService, lineBotHandler, rainAlertBlockRepository);
+        MockitoAnnotations.openMocks(this);
+        weatherScheduler = new WeatherScheduler(subscriptionService, cwaService, geminiService, discordBotService, lineBotHandler, rainAlertBlockRepository);
     }
 
     @Test

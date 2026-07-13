@@ -18,4 +18,9 @@ public interface GeminiService {
                                    String realTimeContext, String town3hContext, String weeklyContext);
                                    
     String generateMultiWeatherResponse(String userMessage, String combinedContext);
+
+    /**
+     * Rewrites the CWA weather warning description to be explicitly localized for a specific county/city.
+     */
+    String rewriteWarningDescription(String locationName, String originalDescription);
 }

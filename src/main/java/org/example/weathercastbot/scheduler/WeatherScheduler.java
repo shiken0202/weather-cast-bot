@@ -32,17 +32,20 @@ public class WeatherScheduler {
     
     private final SubscriptionService subscriptionService;
     private final CWAService cwaService;
+    private final org.example.weathercastbot.service.GeminiService geminiService;
     private final DiscordBotService discordBotService;
     private final LineBotHandler lineBotHandler;
     private final RainAlertBlockRepository rainAlertBlockRepository;
 
     public WeatherScheduler(SubscriptionService subscriptionService, 
                             CWAService cwaService, 
+                            org.example.weathercastbot.service.GeminiService geminiService,
                             DiscordBotService discordBotService, 
                             LineBotHandler lineBotHandler,
                             RainAlertBlockRepository rainAlertBlockRepository) {
         this.subscriptionService = subscriptionService;
         this.cwaService = cwaService;
+        this.geminiService = geminiService;
         this.discordBotService = discordBotService;
         this.lineBotHandler = lineBotHandler;
         this.rainAlertBlockRepository = rainAlertBlockRepository;
@@ -186,11 +189,13 @@ public class WeatherScheduler {
                             }
                         }
 
+                        String rewrittenDescription = geminiService.rewriteWarningDescription(location.getName(), description);
+
                         String template;
                         if (oldWarning != null) {
-                            template = String.format("⚠️ 天氣特報更新：【%%s】已由%s轉為%s！\n📝 氣象署說明：%s\n請謹慎小心。", oldWarning, warning, description);
+                            template = String.format("⚠️ 天氣特報更新：【%%s】已由%s轉為%s！\n📝 氣象署說明：%s\n請謹慎小心。", oldWarning, warning, rewrittenDescription);
                         } else {
-                            template = String.format("⚠️ 天氣特報：【%%s】%s！\n📝 氣象署說明：%s\n請特別留意天氣變化。", warning, description);
+                            template = String.format("⚠️ 天氣特報：【%%s】%s！\n📝 氣象署說明：%s\n請特別留意天氣變化。", warning, rewrittenDescription);
                         }
                         
                         for (Subscriber sub : location.getSubscribers()) {
