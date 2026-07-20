@@ -235,4 +235,41 @@ public class GeminiServiceImpl implements GeminiService {
 
         return originalDescription; // Fallback to original description if AI fails
     }
+
+    @Override
+    public String summarizeAlertBundle(java.util.List<String> alerts) {
+        if (alerts == null || alerts.isEmpty()) return "";
+        if (alerts.size() == 1) return alerts.get(0);
+        
+        String joinedAlerts = String.join("\n\n", alerts);
+        
+        String promptStr = "以下是發給同一位使用者的多則天氣警報與特報（包含不同地區或不同類型的天氣提醒）：\n\n" +
+                "「\n" + joinedAlerts + "\n」\n\n" +
+                "因為多則警報疊在一起看起來非常冗長且重複，請你幫忙將這些訊息「合併並精簡」成一則通順、語氣友善且專業的天氣預警提示。\n" +
+                "規則：\n" +
+                "1. 將相同類型或相關聯的特報（例如：多個地區的大雨特報）合併敘述，例如：「台北市與新北市目前皆發布大雨特報...」。\n" +
+                "2. 務必保留所有的降雨機率、影響現象（如雷擊、坍方、落石等）及重要防範措施。\n" +
+                "3. 刪除重複的開頭語或結尾語，讓整段訊息看起來是一篇連貫的報導。\n" +
+                "4. 長度要比原文縮短，方便手機閱讀。\n" +
+                "5. 回覆時，第一行請加上「☔️ 降雨預警組合包：」作為標題。\n" +
+                "6. 只輸出最終改寫的結果，不包含任何其他的對話或前言。";
+
+        GeminiRequestDto requestDto = GeminiRequestDto.builder()
+                .contents(List.of(
+                        GeminiRequestDto.Content.builder()
+                                .parts(List.of(GeminiRequestDto.Part.builder().text(promptStr).build()))
+                                .build()))
+                .build();
+
+        try {
+            String result = executeGeminiCall(requestDto);
+            if (!result.contains("抱歉，目前")) {
+                return result.trim();
+            }
+        } catch (Exception e) {
+            log.error("Failed to summarize alert bundle with Gemini", e);
+        }
+        
+        return "☔️ 降雨預警組合包：\n\n" + joinedAlerts;
+    }
 }

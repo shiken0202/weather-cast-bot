@@ -430,7 +430,7 @@ public class WeatherScheduler {
                     lineBotHandler.pushMessage(sub.getPlatformId(), entry.getValue().get(0), isSilent);
                 }
             } else {
-                String combinedMsg = "☔️ 降雨預警組合包：\n\n" + String.join("\n\n", entry.getValue());
+                String combinedMsg = geminiService.summarizeAlertBundle(entry.getValue());
                 if (sub.getPlatform() == Platform.DISCORD) {
                     discordBotService.pushMessage(sub.getPlatformId(), combinedMsg);
                 } else if (sub.getPlatform() == Platform.LINE) {

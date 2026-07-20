@@ -23,4 +23,9 @@ public interface GeminiService {
      * Rewrites the CWA weather warning description to be explicitly localized for a specific county/city.
      */
     String rewriteWarningDescription(String locationName, String originalDescription);
+
+    /**
+     * Summarizes a list of weather alerts into a single cohesive message.
+     */
+    String summarizeAlertBundle(java.util.List<String> alerts);
 }
