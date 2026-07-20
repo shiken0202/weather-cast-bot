@@ -306,7 +306,7 @@ public class CWAServiceImpl implements CWAService {
                                         
                                         String description = "";
                                         java.util.Queue<org.json.JSONObject> queue = new java.util.LinkedList<>();
-                                        queue.add(record);
+                                        queue.add(hazard);
                                         while (!queue.isEmpty()) {
                                             org.json.JSONObject obj = queue.poll();
                                             for (String key : obj.keySet()) {

@@ -148,7 +148,8 @@ public class WeatherScheduler {
             Optional<String> thunderAlert = cwaService.getThunderstormAlerts(location.getName());
             if (thunderAlert.isPresent()) {
                 if (!notified.contains("THUNDERSTORM")) {
-                    String template = String.format("🚨 極端天氣警報：【%%s】%s", thunderAlert.get());
+                    String safeThunder = thunderAlert.get().replace("%", "%%");
+                    String template = String.format("🚨 極端天氣警報：【%%s】%s", safeThunder);
                     for (Subscriber sub : location.getSubscribers()) {
                         subscriberAlertMap.computeIfAbsent(sub, k -> new java.util.LinkedHashMap<>())
                                           .computeIfAbsent(template, k -> new java.util.ArrayList<>())
@@ -190,6 +191,7 @@ public class WeatherScheduler {
                         }
 
                         String rewrittenDescription = geminiService.rewriteWarningDescription(location.getName(), description);
+                        rewrittenDescription = rewrittenDescription.replace("%", "%%");
 
                         String template;
                         if (oldWarning != null) {
